@@ -1,31 +1,12 @@
 import * as THREE from 'three';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
-const scene = new THREE.Scene();
-scene.background = new THREE.Color(0xa0d8ef);
-
-const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
-camera.position.set(5, 6, 5);
-
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setSize(window.innerWidth, window.innerHeight);
-document.body.appendChild(renderer.domElement);
-
-const controls = new OrbitControls(camera, renderer.domElement);
-controls.enableDamping = true;
-controls.dampingFactor = 0.05;
-controls.target.set(0, 6, 0);
-
-const light = new THREE.DirectionalLight(0xffffff, 1);
-light.position.set(3, 10, 5);
-scene.add(light, new THREE.AmbientLight(0xffffff, 2));
-
+export function createWindmill() {
 const material = new THREE.MeshStandardMaterial({ color: 0xfaf5ef });
 
 const towerGeo = new THREE.CylinderGeometry(0.2, 0.5, 10, 12);
 const tower = new THREE.Mesh(towerGeo, material);
 tower.position.y = 6;
-scene.add(tower);
+
 
 const hubGeo = new THREE.CylinderGeometry(0.5, 0.5, 0.3, 32);
 const hubMat = new THREE.MeshStandardMaterial({ color: 0x749259 });
@@ -37,7 +18,7 @@ const hubDepth = 0.3;
 const hubHalfDepth = hubDepth / 2;
 
 hub.position.set(0, towerTopY, 0.2 + hubHalfDepth);
-scene.add(hub);
+
 
 const bladeGroup = new THREE.Group();
 bladeGroup.position.copy(hub.position);
@@ -79,40 +60,6 @@ const windmillGroup = new THREE.Group();
 windmillGroup.add(tower);
 windmillGroup.add(hub);
 windmillGroup.add(bladeGroup);
-scene.add(windmillGroup);
 
-let windmillRotation = 0;
-const stableRange = 5 * (Math.PI / 180);
-const fallSpeed = 0.01;
-
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'p') windmillRotation += 0.05;
-  if (e.key === 'o') windmillRotation -= 0.05;
-});
-
-function animate() {
-  requestAnimationFrame(animate);
-  bladeGroup.rotation.z += 0.05;
-
-  if (windmillRotation > stableRange) {
-    const ground = Math.PI / 2;
-    if (windmillRotation < ground) windmillRotation += fallSpeed;
-  } else if (windmillRotation < -stableRange) {
-    const ground = -Math.PI / 2;
-    if (windmillRotation > ground) windmillRotation -= fallSpeed;
-  }
-
-  windmillGroup.rotation.z = windmillRotation;
-  controls.update();
-  renderer.render(scene, camera);
+return { windmillGroup, bladeGroup};
 }
-
-animate();
-
-window.addEventListener('resize', () => {
-  camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
-});
-
-camera.lookAt(0, 6, 0);
