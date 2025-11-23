@@ -1,7 +1,12 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { createWindmill} from './features/windmill.js';
+import { createWindmill } from './features/windmill.js';
+import { createTree } from './features/tree.js';
 const loader = new THREE.TextureLoader();
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+
+
 
 // Scene
 const scene = new THREE.Scene();
@@ -43,115 +48,160 @@ scene.add(ground);
 
 // Building textures
 const buildingTextures = [
-  "/textures/building1.png",
-  "/textures/building2.png",
-  "/textures/building3.png",
-  "/textures/building5.png",
-  "/textures/building6.png",
+    "/textures/building1.png",
+    "/textures/building2.png",
+    "/textures/building3.png",
+    "/textures/building5.png",
+    "/textures/building6.png",
 ];
 
 let allBlades = []
 let allWindwills = [];
+let allTrees = [];
 
 // Create buildings 
 const gridSize = 10;
 const spacing = 10;
 
 for (let i = -gridSize; i <= gridSize; i++) {
-  for (let j = -gridSize; j <= gridSize; j++) {
-    const x = i * spacing;
-    const z = j * spacing;
-      let hasBuilding = false;
-    if (Math.random() < 0.4) { 
-       hasBuilding = true;
+    for (let j = -gridSize; j <= gridSize; j++) {
+        const x = i * spacing;
+        const z = j * spacing;
+        let hasBuilding = false;
+        if (Math.random() < 0.4) {
+            hasBuilding = true;
 
-    // Random dimensions
-    const height = 7 + Math.random() * 10;
-    const width = 5 + Math.random() * 3;
-    const depth = 3 + Math.random() * 3;
+            // Random dimensions
+            const height = 7 + Math.random() * 10;
+            const width = 5 + Math.random() * 3;
+            const depth = 3 + Math.random() * 3;
 
-    // Random texture
-    const texturePath = buildingTextures[Math.floor(Math.random() * buildingTextures.length)];
-    const geometry = new THREE.BoxGeometry(width, height, depth);
-    const texture = loader.load(texturePath);
+            // Random texture
+            const texturePath = buildingTextures[Math.floor(Math.random() * buildingTextures.length)];
+            const geometry = new THREE.BoxGeometry(width, height, depth);
+            const texture = loader.load(texturePath);
 
-    texture.wrapS = THREE.RepeatWrapping;
-    texture.wrapT = THREE.RepeatWrapping;
-    texture.repeat.set(1, 1);
+            texture.wrapS = THREE.RepeatWrapping;
+            texture.wrapT = THREE.RepeatWrapping;
+            texture.repeat.set(1, 1);
 
-    // Materials
-    const sideMaterial = new THREE.MeshStandardMaterial({
-      map: texture,
-      roughness: 0.8,
-      metalness: 0.2
-    });
+            // Materials
+            const sideMaterial = new THREE.MeshStandardMaterial({
+                map: texture,
+                roughness: 0.8,
+                metalness: 0.2
+            });
 
-    const roofMaterial = new THREE.MeshStandardMaterial({ color: 0xaaaaaa });
-    const bottomMaterial = new THREE.MeshStandardMaterial({ color: 0x222222 });
+            const roofMaterial = new THREE.MeshStandardMaterial({ color: 0xaaaaaa });
+            const bottomMaterial = new THREE.MeshStandardMaterial({ color: 0x222222 });
 
-    const material = [
-      sideMaterial,
-      sideMaterial,
-      roofMaterial,
-      bottomMaterial,
-      sideMaterial,
-      sideMaterial
-    ];
+            const material = [
+                sideMaterial,
+                sideMaterial,
+                roofMaterial,
+                bottomMaterial,
+                sideMaterial,
+                sideMaterial
+            ];
 
-    // Create building mesh
-    const building = new THREE.Mesh(geometry, material);
-    building.position.set(x, height / 2, z);
-    building.castShadow = true;
-    building.receiveShadow = true;
+            // Create building mesh
+            const building = new THREE.Mesh(geometry, material);
+            building.position.set(x, height / 2, z);
+            building.castShadow = true;
+            building.receiveShadow = true;
 
-    scene.add(building);
-  }
-  
-    if (!hasBuilding && Math.random() < 0.1) {
-      const { windmillGroup, bladeGroup: blades } = createWindmill();
-      windmillGroup.position.set (x, 0, z);
-      scene.add(windmillGroup);
-      allWindwills.push(windmillGroup);
-      allBlades.push(blades);
+            scene.add(building);
+        }
+
+        if (!hasBuilding && Math.random() < 0.1) {
+            const { windmillGroup, bladeGroup: blades } = createWindmill();
+            windmillGroup.position.set(x, 0, z);
+            scene.add(windmillGroup);
+            allWindwills.push(windmillGroup);
+            allBlades.push(blades);
+        } else if (!hasBuilding && Math.random() < 0.2) {
+            const tree = createTree();
+            tree.position.set(x, 0, z);
+            scene.add(tree);
+            allTrees.push(tree);
+        }
     }
-  }
-  
+
 
 }
 let windmillRotation = 0;
 const stableRange = 5 * (Math.PI / 180);
-const fallSpeed = 0.01; 
+const fallSpeed = 0.01;
 
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'p') windmillRotation += 0.05;
-  if (e.key === 'o') windmillRotation -= 0.05;
+    if (e.key === 'p') windmillRotation += 0.05;
+    if (e.key === 'o') windmillRotation -= 0.05;
 });
 
+window.addEventListener('click', onClickTreeGrow);
+
+function onClickTreeGrow(event) {
+    // convert mouse position to normalized -1..1
+    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+    // cast ray from camera
+    raycaster.setFromCamera(mouse, camera);
+
+    const intersects = raycaster.intersectObjects(allTrees, true);
+
+    if (intersects.length > 0) {
+        // top-level tree group
+        const tree = intersects[0].object.parent;
+
+        // animate: increase scale slightly
+        growTree(tree);
+    }
+}
+
+function growTree(tree) {
+    const targetScale = tree.scale.x + 0.2;
+    const startScale = tree.scale.x;
+    const duration = 300; // ms
+    const startTime = performance.now();
+
+    function animateGrowth() {
+        const elapsed = performance.now() - startTime;
+        const t = Math.min(elapsed / duration, 1);
+
+        const newScale = startScale + (targetScale - startScale) * t;
+        tree.scale.set(newScale, newScale, newScale);
+
+        if (t < 1) requestAnimationFrame(animateGrowth);
+    }
+
+    animateGrowth();
+}
 
 function animate() {
-  requestAnimationFrame(animate);
-allBlades.forEach(b => b.rotation.z += 0.05);
-allWindwills.forEach(w => {
-  w.rotation.z = windmillRotation
-});
+    requestAnimationFrame(animate);
+    allBlades.forEach(b => b.rotation.z += 0.05);
+    allWindwills.forEach(w => {
+        w.rotation.z = windmillRotation
+    });
 
-  if (windmillRotation > stableRange) {
-    const ground = Math.PI / 2;
-    if (windmillRotation < ground) windmillRotation += fallSpeed;
-  } else if (windmillRotation < -stableRange) {
-    const ground = -Math.PI / 2;
-    if (windmillRotation > ground) windmillRotation -= fallSpeed;
-  }
+    if (windmillRotation > stableRange) {
+        const ground = Math.PI / 2;
+        if (windmillRotation < ground) windmillRotation += fallSpeed;
+    } else if (windmillRotation < -stableRange) {
+        const ground = -Math.PI / 2;
+        if (windmillRotation > ground) windmillRotation -= fallSpeed;
+    }
 
 
-  controls.update();
-  renderer.render(scene, camera);
+    controls.update();
+    renderer.render(scene, camera);
 }
 animate();
 
 // Resize
 window.addEventListener('resize', () => {
-  camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
 });
