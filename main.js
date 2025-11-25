@@ -39,12 +39,13 @@ sunLight.shadow.mapSize.height = 2000;
 scene.add(sunLight);
 
 // Ground
-const groundGeometry = new THREE.PlaneGeometry(300, 300);
-const groundMaterial = new THREE.MeshStandardMaterial({ color: 0x555555 });
-const ground = new THREE.Mesh(groundGeometry, groundMaterial);
-ground.rotation.x = -Math.PI / 2;
-ground.receiveShadow = true;
-scene.add(ground);
+const roadTexture = loader.load("/textures/road3.png");
+roadTexture.wrapS = roadTexture.wrapT = THREE.RepeatWrapping;
+
+roadTexture.repeat.set(0.80, 0.80);
+const grassTexture = loader.load("/textures/ground.jpg");
+grassTexture.wrapS = grassTexture.wrapT = THREE.RepeatWrapping;
+
 
 // Building textures
 const buildingTextures = [
@@ -63,12 +64,57 @@ let allTrees = [];
 const gridSize = 10;
 const spacing = 10;
 
+
+function createTile(x, z, isRoad) {
+    const tileGeom = new THREE.PlaneGeometry(10, 10);
+
+    const tileMat = new THREE.MeshStandardMaterial({
+        map: isRoad ? grassTexture : roadTexture,
+          color: 0xB3B3B3,
+           side: THREE.DoubleSide, 
+
+    });
+
+    const tile = new THREE.Mesh(tileGeom, tileMat);
+    tile.rotation.x = -Math.PI / 2;
+    tile.position.set(x, 0, z);
+    tile.receiveShadow = true;
+
+    scene.add(tile);
+}
+function isTextureGreen(texture, callback) {
+    const image = texture.image;
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+
+    canvas.width = image.width;
+    canvas.height = image.height;
+    ctx.drawImage(image, 0, 0);
+
+    const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+
+    let greenCount = 0;
+    let total = canvas.width * canvas.height;
+
+    for (let i = 0; i < data.length; i += 4) {
+        const r = data[i];
+        const g = data[i + 1];
+        const b = data[i + 2];
+
+        if (g > r + 20 && g > b + 20) greenCount++;
+    }
+
+    const fractionGreen = greenCount / total;
+    callback(fractionGreen > 0.2); // 20% green = qualifies for tree
+}
+
+
 for (let i = -gridSize; i <= gridSize; i++) {
     for (let j = -gridSize; j <= gridSize; j++) {
         const x = i * spacing;
         const z = j * spacing;
         let hasBuilding = false;
-        if (Math.random() < 0.4) {
+        if (Math.random() < 0.28) {
             hasBuilding = true;
 
             // Random dimensions
@@ -112,6 +158,7 @@ for (let i = -gridSize; i <= gridSize; i++) {
 
             scene.add(building);
         }
+        createTile(x, z, hasBuilding);
 
         if (!hasBuilding && Math.random() < 0.1) {
             const { windmillGroup, bladeGroup: blades } = createWindmill();
@@ -119,7 +166,7 @@ for (let i = -gridSize; i <= gridSize; i++) {
             scene.add(windmillGroup);
             allWindwills.push(windmillGroup);
             allBlades.push(blades);
-        } else if (!hasBuilding && Math.random() < 0.2) {
+        } else if (!hasBuilding && Math.random() < 0.5) {
             const tree = createTree();
             tree.position.set(x, 0, z);
             scene.add(tree);
