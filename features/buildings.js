@@ -95,7 +95,6 @@ for (let i = -gridSize; i <= gridSize; i++) {
       sideMaterial
     ];
 
-    // Create building mesh
     const building = new THREE.Mesh(geometry, material);
     building.position.set(x, height / 2, z);
     building.castShadow = true;
@@ -105,7 +104,6 @@ for (let i = -gridSize; i <= gridSize; i++) {
   }
 }
 
-// Animation loop 
 function animate() {
   requestAnimationFrame(animate);
   controls.update();
@@ -113,7 +111,6 @@ function animate() {
 }
 animate();
 
-// Resize
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();

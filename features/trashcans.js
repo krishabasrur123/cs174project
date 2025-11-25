@@ -90,7 +90,7 @@ const positions = new Float32Array([
       -l,  l,  l,
        -l,  l, -l,
 
-    // Top (THIS WILL BE REMOVED)
+    // Top
     -l,  l,  l, 
      l,  l,  l, 
       l,  l, -l,
@@ -104,11 +104,10 @@ const positions = new Float32Array([
     l, -l,  l,
 
     // Right
-    l, -l,  l,
-     l,
-    -l, -l, l, 
-      l, -l, l, 
-       l,  l,
+   l, -l,  l,
+ l, -l, -l,
+ l,  l, -l,
+ l,  l,  l,
 
     // Back
     -l, -l, -l,
@@ -181,6 +180,65 @@ const normals = new Float32Array([
      0,0,-1
 ]);
 
+const uvs = new Float32Array([
+    // Front
+    0,0, 1,0, 1,1, 0,1,
+
+    // Left
+    0,0, 1,0, 1,1, 0,1,
+
+    // Top
+    0,0, 1,0, 1,1, 0,1,
+
+    // Bottom
+    0,0, 1,0, 1,1, 0,1,
+
+    // Right
+    0,0, 1,0, 1,1, 0,1,
+
+    // Back
+    0,0, 1,0, 1,1, 0,1,
+]);
+
+
+
+class Texture_Bin { //bin texture
+    vertexShader() {
+        return `
+        uniform sampler2D uTexture;
+        varying vec2 vUv;
+        varying vec3 vPosition;
+        void main() {
+            vUv = uv;
+            vPosition = position;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0);
+        }
+        `;
+    }
+
+    fragmentShader() {
+    return `
+        uniform sampler2D uTexture;
+        uniform float animation_time;
+        varying vec2 vUv;
+        varying vec3 vPosition;
+
+
+        void main() {
+            vec4 tex_color = texture2D(uTexture, vUv);
+            if (!gl_FrontFacing) {
+ gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);  
+    } else {
+        gl_FragColor = tex_color;                  // normal texture
+    }
+        }
+    `;
+}
+
+
+    
+}
+
 // Full geometry
 const boxGeom = new THREE.BufferGeometry();
 boxGeom.setAttribute('position', new THREE.BufferAttribute(positions, 3));
@@ -188,17 +246,87 @@ boxGeom.setAttribute('normal', new THREE.BufferAttribute(normals, 3));
 boxGeom.setIndex(indices);
 
 
-const openTopIndices = indices.filter((v, i) => !(i >= 12 && i < 18));
-boxGeom.setIndex(openTopIndices);
+boxGeom.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
+
+
 boxGeom.attributes.position.needsUpdate = true;
+
+
+boxGeom.addGroup(0, 6, 0);   
+boxGeom.addGroup(6, 6, 1);   
+boxGeom.addGroup(12, 6, 2);  
+boxGeom.addGroup(18, 6, 3);  
+boxGeom.addGroup(24, 6, 4); 
+boxGeom.addGroup(30, 6, 5);  
+
+
 boxGeom.computeVertexNormals();
 
-//cube material
-const recycleMat = new THREE.MeshPhongMaterial({ color: 0x0066ff, shininess: 50 ,side: THREE.DoubleSide}); // blue
-const trashMat   = new THREE.MeshPhongMaterial({ color: 0x00aa00, shininess: 50 ,side: THREE.DoubleSide}); // green
+let animation_time = 0.0;
 
-const recycleBin = new THREE.Mesh(boxGeom, recycleMat);
-const trashBin   = new THREE.Mesh(boxGeom, trashMat);
+
+const textureLoader = new THREE.TextureLoader();
+
+
+const recycleTexture = textureLoader.load('features/recyclelogo.png');
+const compostTexture = textureLoader.load('features/compostlogo.png');
+
+
+recycleTexture.generateMipmaps = true;        // default for power-of-two
+recycleTexture.minFilter = THREE.LinearMipmapLinearFilter;
+recycleTexture.magFilter = THREE.LinearFilter;
+recycleTexture.needsUpdate = true;
+console.log(recycleTexture);
+
+
+
+const recycle_mat = new THREE.ShaderMaterial({
+    uniforms: {
+        uTexture: { value: recycleTexture },
+        animation_time: { value: animation_time }
+
+    },
+    vertexShader: new Texture_Bin().vertexShader(),
+    fragmentShader: new Texture_Bin().fragmentShader(),
+     side: THREE.DoubleSide, 
+    
+});
+
+compostTexture.generateMipmaps = true;       
+compostTexture.minFilter = THREE.LinearMipmapLinearFilter;
+compostTexture.magFilter = THREE.LinearFilter;
+compostTexture.needsUpdate = true;
+console.log(compostTexture);
+
+const compost_mat = new THREE.ShaderMaterial({
+    uniforms: {
+        uTexture: { value: compostTexture },
+        animation_time: { value: animation_time }
+    },
+    vertexShader: new Texture_Bin().vertexShader(),
+    fragmentShader: new Texture_Bin().fragmentShader(),
+    side: THREE.DoubleSide,
+});
+
+
+
+
+
+const recycleMat = new THREE.MeshPhongMaterial({  color: 0x0066ff, shininess: 50 , side: THREE.DoubleSide}); 
+const trashMat   = new THREE.MeshPhongMaterial({ color: 0x00aa00, shininess: 50 ,side: THREE.DoubleSide}); // green
+const mat_top    = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0 }); 
+
+
+
+
+const materials = [ recycle_mat, recycleMat, mat_top, recycleMat, recycleMat, recycleMat ];
+
+const recycleBin = new THREE.Mesh(boxGeom, materials);
+
+
+const trashBin   = new THREE.Mesh(boxGeom, [compost_mat,trashMat,new THREE.MeshBasicMaterial({ transparent: true, opacity: 0 }),trashMat,trashMat,trashMat]);
+
+
 
 scene.add(recycleBin);
 scene.add(trashBin);
@@ -271,9 +399,9 @@ function setFlapMatrix(flapMesh, angleDeg, positionX, binHeight = 2.5) {
 
     const flapRotation = rotationXMatrix(-flapAngle);
 
-    const hingeInverse = translationMatrix(0, -flapScale.elements[5]/2, -flapScale.elements[10]/2);
+    const hingeInverse = translationMatrix(0, -flapScale.elements[5]/2 , -flapScale.elements[10]/2);
 
-    const moveToTop = translationMatrix(0, binHeight, 0);
+    const moveToTop = translationMatrix(0, binHeight+0.025, 0);
 
     const flapMatrix = new THREE.Matrix4()
         .multiply(moveToTop)
@@ -304,6 +432,7 @@ ground.position.y = 0;              // under bins
 ground.receiveShadow = true;
 
 scene.add(ground);
+
 
 
 
@@ -389,6 +518,11 @@ function updateFlaps() {
 }
 
 
+textureLoader.load("features/recyclelogo.png",
+  () => console.log("OK"),
+  undefined,
+  () => console.log("FAIL")
+);
 
 function animate() {
     requestAnimationFrame(animate);
