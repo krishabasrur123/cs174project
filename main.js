@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { createWindmill } from './features/windmill.js';
 import { createTree } from './features/tree.js';
+import { createSolarPanel } from './features/solarpanel.js';
 const loader = new THREE.TextureLoader();
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
@@ -25,6 +26,8 @@ document.body.appendChild(renderer.domElement);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.dampingFactor = 0.05;
+
+createSolarPanel(scene, camera, renderer);
 
 // Lighting
 const light = new THREE.DirectionalLight(0xffffff, 1);
@@ -68,7 +71,7 @@ for (let i = -gridSize; i <= gridSize; i++) {
         const x = i * spacing;
         const z = j * spacing;
         let hasBuilding = false;
-        if (Math.random() < 0.4) {
+        if (Math.random() < 0.15) {
             hasBuilding = true;
 
             // Random dimensions
@@ -193,6 +196,10 @@ function animate() {
         if (windmillRotation > ground) windmillRotation -= fallSpeed;
     }
 
+    if (scene.userData.updateTrashCans) {
+scene.userData.updateTrashCans();
+
+    }
 
     controls.update();
     renderer.render(scene, camera);
