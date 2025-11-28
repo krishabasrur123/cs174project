@@ -3,9 +3,12 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { createWindmill } from './features/windmill.js';
 import { createTree } from './features/tree.js';
 import { createSolarPanel } from './features/solarpanel.js';
+import { createCameraController } from './features/CameraController.js';
+
 const loader = new THREE.TextureLoader();
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
+
 
 
 
@@ -26,6 +29,8 @@ document.body.appendChild(renderer.domElement);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.dampingFactor = 0.05;
+const collidableObjects = [];
+const CameraController = createCameraController (camera, scene, collidableObjects);
 
 createSolarPanel(scene, camera, renderer);
 
@@ -160,6 +165,8 @@ for (let i = -gridSize; i <= gridSize; i++) {
             building.receiveShadow = true;
 
             scene.add(building);
+
+            collidableObjects.push(building);
         }
         createTile(x, z, hasBuilding);
 
@@ -169,11 +176,13 @@ for (let i = -gridSize; i <= gridSize; i++) {
             scene.add(windmillGroup);
             allWindwills.push(windmillGroup);
             allBlades.push(blades);
+            collidableObjects.push(windmillGroup);
         } else if (!hasBuilding && Math.random() < 0.5) {
             const tree = createTree();
             tree.position.set(x, 0, z);
             scene.add(tree);
             allTrees.push(tree);
+            collidableObjects.push(tree);
         }
     }
 
@@ -248,7 +257,7 @@ scene.userData.updateTrashCans();
 
     }
 
-    controls.update();
+    CameraController.update();
     renderer.render(scene, camera);
 }
 animate();
