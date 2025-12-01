@@ -2,6 +2,9 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { createWindmill } from './features/windmill.js';
 import { createTree } from './features/tree.js';
+import { createSolarPanel } from './features/solarpanel.js';
+import { createCameraController } from './features/CameraController.js';
+
 const loader = new THREE.TextureLoader();
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
@@ -56,6 +59,10 @@ updateUI();
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.dampingFactor = 0.05;
+const collidableObjects = [];
+const CameraController = createCameraController (camera, scene, collidableObjects);
+
+createSolarPanel(scene, camera, renderer);
 
 // Lighting
 const light = new THREE.DirectionalLight(0xffffff, 1);
@@ -151,7 +158,7 @@ for (let i = -gridSize; i <= gridSize; i++) {
         const x = i * spacing;
         const z = j * spacing;
         let hasBuilding = false;
-        if (Math.random() < 0.28) {
+        if (Math.random() < 0.15) {
             hasBuilding = true;
 
             // Random dimensions
@@ -194,6 +201,8 @@ for (let i = -gridSize; i <= gridSize; i++) {
             building.receiveShadow = true;
 
             scene.add(building);
+
+            collidableObjects.push(building);
         }
         createTile(x, z, hasBuilding);
 
@@ -203,11 +212,13 @@ for (let i = -gridSize; i <= gridSize; i++) {
             scene.add(windmillGroup);
             allWindwills.push(windmillGroup);
             allBlades.push(blades);
+            collidableObjects.push(windmillGroup);
         } else if (!hasBuilding && Math.random() < 0.5) {
             const tree = createTree();
             tree.position.set(x, 0, z);
             scene.add(tree);
             allTrees.push(tree);
+            collidableObjects.push(tree);
         }
     }
 
@@ -288,8 +299,12 @@ function animate() {
         if (windmillRotation > ground) windmillRotation -= fallSpeed;
     }
 
+    if (scene.userData.updateTrashCans) {
+scene.userData.updateTrashCans();
 
-    controls.update();
+    }
+
+    CameraController.update();
     renderer.render(scene, camera);
 }
 animate();

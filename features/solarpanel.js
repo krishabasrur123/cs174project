@@ -1,15 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-
-const scene = new THREE.Scene();
-scene.background = new THREE.Color(0xa0d8ef);
-
-const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
-camera.position.set(6, 6, 5);
-
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setSize(window.innerWidth, window.innerHeight);
-document.body.appendChild(renderer.domElement);
+export function createSolarPanel(scene, camera, renderer) {
 
 const orbitControls = new OrbitControls(camera, renderer.domElement);
 orbitControls.enableDamping = true;
@@ -20,7 +11,7 @@ orbitControls.target.set(6, 6, -2);
 const sunGeometry = new THREE.SphereGeometry(1, 32, 32);
 const sunMaterial = new THREE.MeshBasicMaterial({ color: 0xfdfd96 });
 const sun = new THREE.Mesh(sunGeometry, sunMaterial);
-sun.position.set(10, 10, 10);
+sun.position.set(0, 20, 20);
 scene.add(sun);
 
 // Directional light representing sun
@@ -69,7 +60,7 @@ const solarPanel = new THREE.Mesh(panelGeometry, panelMaterial);
 solarPanel.rotation.x = -Math.PI / 6;
 panelContainer.add(solarPanel);
 
-panelContainer.position.set(6, 6, -2);
+panelContainer.position.set(2, 15, 20);
 
 const moveSpeed = 0.1;
 document.addEventListener('keydown', (event) => {
@@ -118,14 +109,10 @@ function runAnimation() {
     
     updateSun();
     orbitControls.update();
-    renderer.render(scene, camera);
+    
 }
 
-// Handle window resize
-window.addEventListener('resize', () => {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-});
-
 runAnimation();
+}
+
+
