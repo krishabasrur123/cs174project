@@ -9,9 +9,6 @@ const loader = new THREE.TextureLoader();
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
 
-
-
-
 // Scene
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xa0d8ef);
@@ -24,6 +21,39 @@ camera.position.set(3, 3, 5);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
+
+// --- Game State ---
+let wateringCans = 10;
+let solarPanels = 5;
+let windmills = 5;
+let points = 0;
+let windmillCredits = 3;
+let groundTiles = [];
+
+// --- UI Display ---
+const ui = document.createElement("div");
+ui.style.position = "absolute";
+ui.style.top = "10px";
+ui.style.left = "10px";
+ui.style.padding = "10px 20px";
+ui.style.background = "rgba(255,255,255,0.8)";
+ui.style.borderRadius = "8px";
+ui.style.fontSize = "18px";
+ui.style.fontFamily = "Arial";
+ui.style.zIndex = "1000";
+document.body.appendChild(ui);
+
+function updateUI() {
+    ui.innerHTML = `
+        ⭐ Points: ${points}<br>
+        🌱 Watering Cans: ${wateringCans}<br>
+        ☀️ Solar Panels: <br>
+        💨 Windmills: <br>
+        
+
+    `;
+}
+updateUI();
 
 // Controls
 const controls = new OrbitControls(camera, renderer.domElement);
@@ -68,6 +98,9 @@ let allBlades = []
 let allWindwills = [];
 let allTrees = [];
 
+
+
+
 // Create buildings 
 const gridSize = 10;
 const spacing = 10;
@@ -78,9 +111,7 @@ function createTile(x, z, isRoad) {
 
     const tileMat = new THREE.MeshStandardMaterial({
         map: isRoad ? grassTexture : roadTexture,
-          color: 0xB3B3B3,
-           side: THREE.DoubleSide, 
-
+        side: THREE.DoubleSide,
     });
 
     const tile = new THREE.Mesh(tileGeom, tileMat);
@@ -89,7 +120,12 @@ function createTile(x, z, isRoad) {
     tile.receiveShadow = true;
 
     scene.add(tile);
+
+    // 🔥 Add to raycast list
+    groundTiles.push(tile);
 }
+
+
 function isTextureGreen(texture, callback) {
     const image = texture.image;
     const canvas = document.createElement("canvas");
@@ -204,19 +240,30 @@ function onClickTreeGrow(event) {
     mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
     mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
-    // cast ray from camera
+    // cast ray
     raycaster.setFromCamera(mouse, camera);
 
     const intersects = raycaster.intersectObjects(allTrees, true);
+    if (intersects.length === 0) return;
 
-    if (intersects.length > 0) {
-        // top-level tree group
-        const tree = intersects[0].object.parent;
-
-        // animate: increase scale slightly
-        growTree(tree);
+    // if no watering cans left → do nothing
+    if (wateringCans <= 0) {
+        console.log("No watering cans left!");
+        return;
     }
+
+    const tree = intersects[0].object.parent;
+
+    // grow the tree
+    growTree(tree);
+
+    // update game state
+    wateringCans--;
+    points += 5;
+
+    updateUI();
 }
+
 
 function growTree(tree) {
     const targetScale = tree.scale.x + 0.2;
@@ -261,6 +308,8 @@ scene.userData.updateTrashCans();
     renderer.render(scene, camera);
 }
 animate();
+
+
 
 // Resize
 window.addEventListener('resize', () => {
