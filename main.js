@@ -24,11 +24,20 @@ document.body.appendChild(renderer.domElement);
 
 // --- Game State ---
 let wateringCans = 10;
-let solarPanels = 5;
+let solarPanels = 10;
 let windmills = 5;
 let points = 0;
 let windmillCredits = 3;
 let groundTiles = [];
+let allBuildings = [];
+let selectedBuilding = null;
+
+const highlightMaterial = new THREE.MeshBasicMaterial({
+    color: 0xffff00,
+    wireframe: true
+});
+let highlightMesh = null;
+
 
 // --- UI Display ---
 const ui = document.createElement("div");
@@ -47,10 +56,7 @@ function updateUI() {
     ui.innerHTML = `
         ⭐ Points: ${points}<br>
         🌱 Watering Cans: ${wateringCans}<br>
-        ☀️ Solar Panels: <br>
-        💨 Windmills: <br>
-        
-
+        ☀️ Solar Panels: ${solarPanels}<br>
     `;
 }
 updateUI();
@@ -60,9 +66,22 @@ const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.dampingFactor = 0.05;
 const collidableObjects = [];
-const CameraController = createCameraController (camera, scene, collidableObjects);
+const CameraController = createCameraController(camera, scene, collidableObjects);
 
-createSolarPanel(scene, camera, renderer);
+// const panel = createSolarPanel(scene, camera, renderer);
+// let baseSolarPanel = null;
+
+// scene.traverse(obj => {
+//     if (obj.name === "SolarPanel") {
+//         baseSolarPanel = obj;
+//     }
+// });
+
+const baseSolarPanel = createSolarPanel();
+
+// building.add(panel);
+// panel.position.set(0, roofHeight + 0.2, 0);
+// panel.rotation.x = -Math.PI / 3;
 
 // Lighting
 const light = new THREE.DirectionalLight(0xffffff, 1);
@@ -97,9 +116,6 @@ const buildingTextures = [
 let allBlades = []
 let allWindwills = [];
 let allTrees = [];
-
-
-
 
 // Create buildings 
 const gridSize = 10;
@@ -229,11 +245,72 @@ const stableRange = 5 * (Math.PI / 180);
 const fallSpeed = 0.01;
 
 document.addEventListener('keydown', (e) => {
-    if (e.key === 'p') windmillRotation += 0.05;
-    if (e.key === 'o') windmillRotation -= 0.05;
+    // if (e.key === 'o') windmillRotation -= 0.05;
 });
 
+function selectBuilding(building) {
+    // Remove old highlight
+    if (highlightMesh) {
+        scene.remove(highlightMesh);
+        highlightMesh = null;
+    }
+
+    selectedBuilding = building;
+
+    // Create highlight mesh slightly larger
+    const geo = new THREE.BoxGeometry(
+        building.geometry.parameters.width * 1.05,
+        building.geometry.parameters.height * 1.05,
+        building.geometry.parameters.depth * 1.05
+    );
+
+    highlightMesh = new THREE.Mesh(geo, highlightMaterial);
+    highlightMesh.position.copy(building.position);
+    scene.add(highlightMesh);
+
+    console.log("Building selected:", building);
+}
+
+
+
+
+
 window.addEventListener('click', onClickTreeGrow);
+
+let lastBuildingClicked = null;
+
+window.addEventListener("click", (event) => {
+    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+    raycaster.setFromCamera(mouse, camera);
+    const hits = raycaster.intersectObjects(collidableObjects, true);
+
+    lastBuildingClicked = null;
+
+    for (const hit of hits) {
+        const obj = hit.object;
+
+        // Buildings are BoxGeometry → clickable
+        if (obj.geometry && obj.geometry.type === "BoxGeometry") {
+            let root = obj;
+            while (root.parent && root.parent.type !== "Scene") {
+                root = root.parent;
+            }
+
+            lastBuildingClicked = root;
+            selectBuilding(root); // <--- NEW highlighting
+            return;
+        }
+    }
+
+    // If you click empty ground → clear highlight
+    if (highlightMesh) {
+        scene.remove(highlightMesh);
+        highlightMesh = null;
+    }
+});
+
 
 function onClickTreeGrow(event) {
     // convert mouse position to normalized -1..1
@@ -264,7 +341,6 @@ function onClickTreeGrow(event) {
     updateUI();
 }
 
-
 function growTree(tree) {
     const targetScale = tree.scale.x + 0.2;
     const startScale = tree.scale.x;
@@ -284,6 +360,51 @@ function growTree(tree) {
     animateGrowth();
 }
 
+
+window.addEventListener("keydown", (e) => {
+    if (e.key.toLowerCase() !== "p") return;
+    if (!selectedBuilding) return;
+
+    if (!baseSolarPanel) {
+        console.warn("Solar panel not found in scene!");
+        return;
+    }
+
+    if (solarPanels <= 0) {
+        console.log("No solar panels left!");
+        return;
+    }
+
+    // Remove any existing panel on the building
+    const oldPanel = selectedBuilding.getObjectByName("SolarPanel");
+    if (oldPanel) selectedBuilding.remove(oldPanel);
+
+    // Clone the actual solar panel from solarpanel.js
+    const newPanel = baseSolarPanel.clone(true);
+    newPanel.name = "SolarPanel";
+
+    // Compute roof height
+    const box = new THREE.Box3().setFromObject(selectedBuilding);
+    const size = new THREE.Vector3();
+    box.getSize(size);
+
+    const roofHeight = size.y / 2;
+
+    // Attach to the building
+    selectedBuilding.add(newPanel);
+
+    // Local position
+    newPanel.position.set(0, roofHeight + 0.2, 0);
+
+    // Optional tilt
+    newPanel.rotation.x = -Math.PI / 6;
+
+    console.log("Solar panel cloned onto building!");
+    solarPanels--;
+    points += 5;
+    updateUI();
+});
+
 function animate() {
     requestAnimationFrame(animate);
     allBlades.forEach(b => b.rotation.z += 0.05);
@@ -300,7 +421,7 @@ function animate() {
     }
 
     if (scene.userData.updateTrashCans) {
-scene.userData.updateTrashCans();
+        scene.userData.updateTrashCans();
 
     }
 
