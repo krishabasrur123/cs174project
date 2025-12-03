@@ -28,12 +28,14 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 // --- Game State ---
 let wateringCans = 10;
 let solarPanels = 10;
-let windmills = 5;
+let wind = 0;
 let points = 0;
-let windmillCredits = 3;
+let windMilestone = 0;
 let groundTiles = [];
 let allBuildings = [];
 let selectedBuilding = null;
+let windmillTimers = new Map();
+let windmillPointTimers = new Map();
 
 const highlightMaterial = new THREE.MeshBasicMaterial({
     color: 0xffff00,
@@ -57,7 +59,8 @@ document.body.appendChild(ui);
 
 function updateUI() {
     ui.innerHTML = `
-        ⭐ Points: ${points}<br>
+        ⭐ Total Points: ${points}<br>
+        💨 Wind Points: ${wind}<br>
         🌱 Watering Cans: ${wateringCans}<br>
         ☀️ Solar Panels: ${solarPanels}<br>
     `;
@@ -237,10 +240,17 @@ for (let i = -gridSize; i <= gridSize; i++) {
             const { windmillGroup, bladeGroup: blades } = createWindmill();
             windmillGroup.position.set(x, 0, z);
             scene.add(windmillGroup);
+
+            // NEW — add interaction state
+            windmillGroup.userData.spin = false;
+            windmillGroup.userData.blades = blades;
+
             allWindwills.push(windmillGroup);
             allBlades.push(blades);
             collidableObjects.push(windmillGroup);
+
         } else if (!hasBuilding && Math.random() < 0.5) {
+
             const tree = createTree();
             tree.position.set(x, 0, z);
             scene.add(tree);
@@ -251,13 +261,16 @@ for (let i = -gridSize; i <= gridSize; i++) {
 
 
 }
-let windmillRotation = 0;
-const stableRange = 5 * (Math.PI / 180);
-const fallSpeed = 0.01;
 
-document.addEventListener('keydown', (e) => {
-    // if (e.key === 'o') windmillRotation -= 0.05;
-});
+//BACKUP WINDMILL
+
+// let windmillRotation = 0;
+// const stableRange = 5 * (Math.PI / 180);
+// const fallSpeed = 0.01;
+
+// document.addEventListener('keydown', (e) => {
+//     // if (e.key === 'o') windmillRotation -= 0.05;
+// });
 
 function selectBuilding(building) {
     // Remove old highlight
@@ -283,9 +296,6 @@ function selectBuilding(building) {
 }
 
 
-
-
-
 window.addEventListener('click', onClickTreeGrow);
 
 let lastBuildingClicked = null;
@@ -302,6 +312,34 @@ window.addEventListener("click", (event) => {
     for (const hit of hits) {
         const obj = hit.object;
 
+        let root = obj;
+        while (root.parent && root.parent.type !== "Scene") {
+            root = root.parent;
+        }
+
+        if (allWindwills.includes(root)) {
+            console.log("Windmill clicked!");
+
+            // 🔥 Activate rotation for 10 seconds
+            const endTime = performance.now() + 6000; // 5 sec
+            windmillTimers.set(root, endTime);
+            windmillPointTimers.set(root, performance.now());
+            // Give points for clicking a windmill
+
+            updateUI();
+
+            return;
+        }
+
+        // if (root.userData && root.userData.blades) {
+        //     // It's a windmill!
+        //     root.userData.spin = !root.userData.spin;
+        //     console.log("Windmill spin toggled:", root.userData.spin);
+
+        //     // DO NOT highlight windmills like buildings
+        //     return;
+        // }
+
         // Buildings are BoxGeometry → clickable
         if (obj.geometry && obj.geometry.type === "BoxGeometry") {
             let root = obj;
@@ -314,6 +352,7 @@ window.addEventListener("click", (event) => {
             return;
         }
     }
+
 
     // If you click empty ground → clear highlight
     if (highlightMesh) {
@@ -347,7 +386,7 @@ function onClickTreeGrow(event) {
 
     // update game state
     wateringCans--;
-    points += 5;
+    points += 2;
 
     updateUI();
 }
@@ -388,7 +427,20 @@ window.addEventListener("keydown", (e) => {
 
     // Remove any existing panel on the building
     const oldPanel = selectedBuilding.getObjectByName("SolarPanel");
-    if (oldPanel) selectedBuilding.remove(oldPanel);
+    if (oldPanel) {
+        console.log("Building already has a solar panel!");
+        return; // ❗ Stop — no point increase, no solar panel decrease
+    }
+
+    if (!baseSolarPanel) {
+        console.warn("Solar panel not found in scene!");
+        return;
+    }
+
+    if (solarPanels <= 0) {
+        console.log("No solar panels left!");
+        return;
+    }
 
     // Clone the actual solar panel from solarpanel.js
     const newPanel = baseSolarPanel.clone(true);
@@ -418,18 +470,55 @@ window.addEventListener("keydown", (e) => {
 
 function animate() {
     requestAnimationFrame(animate);
-    allBlades.forEach(b => b.rotation.z += 0.05);
-    allWindwills.forEach(w => {
-        w.rotation.z = windmillRotation
+    scene.traverse(obj => {
+        if (obj.userData && obj.userData.spin && obj.userData.blades) {
+            obj.userData.blades.rotation.z += 0.05;
+        }
+    });
+    allBlades.forEach((blades, i) => {
+        const windmill = allWindwills[i];
+
+        const endTime = windmillTimers.get(windmill);
+        const now = performance.now();
+
+        if (endTime && now < endTime) {
+            // 🔄 Spin while timer active
+            blades.rotation.z += 0.08;
+
+            const lastPointTime = windmillPointTimers.get(windmill) || now;
+
+
+            if (now - lastPointTime >= 1000) {
+                wind += 1; // +1 point per second while spinning
+                windmillPointTimers.set(windmill, now);
+                updateUI();
+            }
+            const milestone = Math.floor((wind + 1) / 10);
+
+            if (milestone > windMilestone) {
+                windMilestone += 1;
+                points += 2;
+            }
+
+        } else {
+            // 🛑 Stop spinning after 10 sec
+            windmillTimers.delete(windmill);
+            windmillPointTimers.delete(windmill);
+        }
+
     });
 
-    if (windmillRotation > stableRange) {
-        const ground = Math.PI / 2;
-        if (windmillRotation < ground) windmillRotation += fallSpeed;
-    } else if (windmillRotation < -stableRange) {
-        const ground = -Math.PI / 2;
-        if (windmillRotation > ground) windmillRotation -= fallSpeed;
-    }
+    // allWindwills.forEach(w => {
+    //     w.rotation.z = windmillRotation
+    // });
+
+    // if (windmillRotation > stableRange) {
+    //     const ground = Math.PI / 2;
+    //     if (windmillRotation < ground) windmillRotation += fallSpeed;
+    // } else if (windmillRotation < -stableRange) {
+    //     const ground = -Math.PI / 2;
+    //     if (windmillRotation > ground) windmillRotation -= fallSpeed;
+    // }
 
     if (scene.userData.updateTrashCans) {
         scene.userData.updateTrashCans();
