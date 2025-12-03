@@ -22,6 +22,9 @@ const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
 // --- Game State ---
 let wateringCans = 10;
 let solarPanels = 10;
@@ -86,13 +89,21 @@ const baseSolarPanel = createSolarPanel();
 // Lighting
 const light = new THREE.DirectionalLight(0xffffff, 1);
 light.position.set(3, 10, 5);
-scene.add(light, new THREE.AmbientLight(0xffffff, 2));
 
 const sunLight = new THREE.DirectionalLight(0xffffff, 1.0);
 sunLight.position.set(30, 50, 20);
 sunLight.castShadow = true;
-sunLight.shadow.mapSize.width = 2000;
-sunLight.shadow.mapSize.height = 2000;
+sunLight.shadow.mapSize.width = 2048;
+sunLight.shadow.mapSize.height = 2048;
+sunLight.shadow.camera.near = 1;
+sunLight.shadow.camera.far = 100;
+sunLight.shadow.camera.left = -50;
+sunLight.shadow.camera.right = 50;
+sunLight.shadow.camera.top = 50;
+sunLight.shadow.camera.bottom = -50;
+
+const ambient = new THREE.AmbientLight(0xffffff, 0.7);
+
 scene.add(sunLight);
 
 // Ground
@@ -127,7 +138,7 @@ function createTile(x, z, isRoad) {
 
     const tileMat = new THREE.MeshStandardMaterial({
         map: isRoad ? grassTexture : roadTexture,
-        side: THREE.DoubleSide,
+        side: THREE.FrontSide,
     });
 
     const tile = new THREE.Mesh(tileGeom, tileMat);
