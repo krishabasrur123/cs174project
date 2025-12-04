@@ -26,6 +26,8 @@ document.body.appendChild(renderer.domElement);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
+
+
 // --- Game State ---
 let wateringCans = 10;
 let solarPanels = 10;
@@ -37,6 +39,10 @@ let allBuildings = [];
 let selectedBuilding = null;
 let windmillTimers = new Map();
 let windmillPointTimers = new Map();
+let gameTime = 60;
+let gameRunning = true;
+let targetPoints = 50;
+
 
 const highlightMaterial = new THREE.MeshBasicMaterial({
     color: 0xffff00,
@@ -58,6 +64,18 @@ ui.style.fontFamily = "Arial";
 ui.style.zIndex = "1000";
 document.body.appendChild(ui);
 
+const timerUI = document.createElement("div");
+timerUI.style.position = "absolute";
+timerUI.style.top = "10px";
+timerUI.style.right = "10px";
+timerUI.style.padding = "10px 20px";
+timerUI.style.fontSize = "18px";
+timerUI.style.fontFamily = "Arial";
+timerUI.style.zIndex = "1000";
+timerUI.style.background = "rgba(255,255,255,0.8)";
+timerUI.style.borderRadius = "8px";
+document.body.appendChild(timerUI);
+
 function updateUI() {
     ui.innerHTML = `
         ⭐ Total Points: ${points}<br>
@@ -65,8 +83,15 @@ function updateUI() {
         🌱 Watering Cans: ${wateringCans}<br>
         ☀️ Solar Panels: ${solarPanels}<br>
     `;
+    timerUI.innerHTML = `
+        ⏱️ Timer: 00:${gameTime}<br>
+    `;
 }
 updateUI();
+
+
+
+
 
 // Controls
 const controls = new OrbitControls(camera, renderer.domElement);
@@ -128,6 +153,30 @@ let allTrees = [];
 // Create buildings 
 const gridSize = 10;
 const spacing = 10;
+
+function startGameTimer() {
+    // const timerEl = document.getElementById("timer");
+
+    const timerInterval = setInterval(() => {
+        if (!gameRunning) {
+            clearInterval(timerInterval);
+            return;
+        }
+
+        gameTime--;
+        updateUI();
+        // timerEl.textContent = "Time: " + gameTime;
+
+        if (gameTime <= 0) {
+            gameRunning = false;
+            clearInterval(timerInterval);
+            endGame();
+        }
+    }, 1000);
+}
+
+startGameTimer();
+
 
 
 function createTile(x, z, isRoad) {
