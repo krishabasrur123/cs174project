@@ -4,6 +4,7 @@ import { createWindmill } from './features/windmill.js';
 import { createTree } from './features/tree.js';
 import { createSolarPanel } from './features/solarpanel.js';
 import { createCameraController } from './features/CameraController.js';
+import { createTrash } from './features/Trash.js';
 
 const loader = new THREE.TextureLoader();
 const raycaster = new THREE.Raycaster();
@@ -74,20 +75,9 @@ controls.dampingFactor = 0.05;
 const collidableObjects = [];
 const CameraController = createCameraController(camera, scene, collidableObjects);
 
-// const panel = createSolarPanel(scene, camera, renderer);
-// let baseSolarPanel = null;
-
-// scene.traverse(obj => {
-//     if (obj.name === "SolarPanel") {
-//         baseSolarPanel = obj;
-//     }
-// });
 
 const baseSolarPanel = createSolarPanel();
 
-// building.add(panel);
-// panel.position.set(0, roofHeight + 0.2, 0);
-// panel.rotation.x = -Math.PI / 3;
 
 // Lighting
 const light = new THREE.DirectionalLight(0xffffff, 1);
@@ -129,6 +119,8 @@ const buildingTextures = [
     "/textures/building6.png",
 ];
 
+
+
 let allBlades = []
 let allWindwills = [];
 let allTrees = [];
@@ -157,31 +149,31 @@ function createTile(x, z, isRoad) {
 }
 
 
-function isTextureGreen(texture, callback) {
-    const image = texture.image;
-    const canvas = document.createElement("canvas");
-    const ctx = canvas.getContext("2d");
+// function isTextureGreen(texture, callback) {
+//     const image = texture.image;
+//     const canvas = document.createElement("canvas");
+//     const ctx = canvas.getContext("2d");
 
-    canvas.width = image.width;
-    canvas.height = image.height;
-    ctx.drawImage(image, 0, 0);
+//     canvas.width = image.width;
+//     canvas.height = image.height;
+//     ctx.drawImage(image, 0, 0);
 
-    const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+//     const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
 
-    let greenCount = 0;
-    let total = canvas.width * canvas.height;
+//     let greenCount = 0;
+//     let total = canvas.width * canvas.height;
 
-    for (let i = 0; i < data.length; i += 4) {
-        const r = data[i];
-        const g = data[i + 1];
-        const b = data[i + 2];
+//     for (let i = 0; i < data.length; i += 4) {
+//         const r = data[i];
+//         const g = data[i + 1];
+//         const b = data[i + 2];
 
-        if (g > r + 20 && g > b + 20) greenCount++;
-    }
+//         if (g > r + 20 && g > b + 20) greenCount++;
+//     }
 
-    const fractionGreen = greenCount / total;
-    callback(fractionGreen > 0.2); // 20% green = qualifies for tree
-}
+//     const fractionGreen = greenCount / total;
+//     callback(fractionGreen > 0.2); // 20% green = qualifies for tree
+// }
 
 
 for (let i = -gridSize; i <= gridSize; i++) {
@@ -239,7 +231,7 @@ for (let i = -gridSize; i <= gridSize; i++) {
 
         if (!hasBuilding && Math.random() < 0.1) {
             const { windmillGroup, bladeGroup: blades } = createWindmill();
-            windmillGroup.position.set(x, 0, z);
+            windmillGroup.position.set(x, -1, z);
             scene.add(windmillGroup);
 
             // NEW — add interaction state
@@ -266,6 +258,14 @@ for (let i = -gridSize; i <= gridSize; i++) {
             scene.add(tree);
             allTrees.push(tree);
             collidableObjects.push(tree);
+        } else if (!hasBuilding && Math.random() < 0.5) {
+
+            const trash = createTrash();
+            trash.position.set(x, 1.5, z);
+
+            scene.add(trash);
+            //allTrees.push(tree);
+            //collidableObjects.push(trash);
         }
     }
 
