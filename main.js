@@ -92,6 +92,7 @@ const baseSolarPanel = createSolarPanel();
 // Lighting
 const light = new THREE.DirectionalLight(0xffffff, 1);
 light.position.set(3, 10, 5);
+scene.add(light);
 
 const sunLight = new THREE.DirectionalLight(0xffffff, 1.0);
 sunLight.position.set(30, 50, 20);
@@ -99,13 +100,14 @@ sunLight.castShadow = true;
 sunLight.shadow.mapSize.width = 2048;
 sunLight.shadow.mapSize.height = 2048;
 sunLight.shadow.camera.near = 1;
-sunLight.shadow.camera.far = 100;
-sunLight.shadow.camera.left = -50;
-sunLight.shadow.camera.right = 50;
-sunLight.shadow.camera.top = 50;
-sunLight.shadow.camera.bottom = -50;
+sunLight.shadow.camera.far = 200;
+sunLight.shadow.camera.left = -120;
+sunLight.shadow.camera.right = 120;
+sunLight.shadow.camera.top = 120;
+sunLight.shadow.camera.bottom = -120;
 
 const ambient = new THREE.AmbientLight(0xffffff, 0.7);
+scene.add(ambient);
 
 scene.add(sunLight);
 
@@ -151,7 +153,6 @@ function createTile(x, z, isRoad) {
 
     scene.add(tile);
 
-    // 🔥 Add to raycast list
     groundTiles.push(tile);
 }
 
@@ -253,6 +254,15 @@ for (let i = -gridSize; i <= gridSize; i++) {
 
             const tree = createTree();
             tree.position.set(x, 0, z);
+            tree.castShadow = true;
+            tree.receiveShadow = true;
+
+            tree.traverse((child) => {
+                if (child.isMesh) {
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+                }
+            });
             scene.add(tree);
             allTrees.push(tree);
             collidableObjects.push(tree);
@@ -470,6 +480,7 @@ window.addEventListener("keydown", (e) => {
 
 function animate() {
     requestAnimationFrame(animate);
+    controls.update();
     scene.traverse(obj => {
         if (obj.userData && obj.userData.spin && obj.userData.blades) {
             obj.userData.blades.rotation.z += 0.05;
@@ -482,7 +493,7 @@ function animate() {
         const now = performance.now();
 
         if (endTime && now < endTime) {
-            // 🔄 Spin while timer active
+            //  Spin while timer active
             blades.rotation.z += 0.08;
 
             const lastPointTime = windmillPointTimers.get(windmill) || now;
@@ -501,7 +512,7 @@ function animate() {
             }
 
         } else {
-            // 🛑 Stop spinning after 10 sec
+            // Stop spinning after 10 sec
             windmillTimers.delete(windmill);
             windmillPointTimers.delete(windmill);
         }
