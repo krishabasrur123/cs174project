@@ -1,6 +1,46 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
+/*
+------------------------------ HOW TO IMPORT  THIS MODULE IN MAIN>JS ------------------------------
+
+1. IMPORT THE FUNCTION
+In your main.js (or whatever file initializes the scene):
+
+    import { createtrashcans } from './createtrashcans.js';
+
+2. CREATE THE BINS + CLICK HANDLER
+Inside  scene setup:
+
+    const { recycleBin, trashBin, animateFlaps, handleClick } =
+        createtrashcans(scene, (binType) => {
+            console.log("Bin clicked:", binType);   // 'r' for recycle, 'c' for compost
+        });
+
+3. ADD BINS TO THE SCENE
+    scene.add(recycleBin);
+    scene.add(trashBin);
+
+4. ADD CLICK LISTENER
+
+    window.addEventListener("pointerdown", (event) => {
+        handleClick(event, camera);
+    });
+
+5. CALL animateFlaps() IN YOUR ANIMATE LOOP
+Inside your animation loop:
+
+    function render() {
+        requestAnimationFrame(render);
+
+        animateFlaps();     // <-- make lids move
+
+        renderer.render(scene, camera);
+    }
+    render();
+
+*/
+
 
 export function createtrashcans (scene, handleClick) {
 //matrices
