@@ -5,6 +5,8 @@ import { createTree } from './features/tree.js';
 import { createSolarPanel } from './features/solarpanel.js';
 import { createCameraController } from './features/CameraController.js';
 import { createTrash } from './features/Trash.js';
+import { createtrashcans } from './features/trashcans.js';
+
 
 const loader = new THREE.TextureLoader();
 const raycaster = new THREE.Raycaster();
@@ -67,6 +69,10 @@ function updateUI() {
     `;
 }
 updateUI();
+
+let trashIsPicked=false;
+let trashColor="";
+
 
 // Controls
 const controls = new OrbitControls(camera, renderer.domElement);
@@ -175,7 +181,7 @@ function createTile(x, z, isRoad) {
 //     callback(fractionGreen > 0.2); // 20% green = qualifies for tree
 // }
 
-
+let trashCanSets=[]
 for (let i = -gridSize; i <= gridSize; i++) {
     for (let j = -gridSize; j <= gridSize; j++) {
         const x = i * spacing;
@@ -242,7 +248,7 @@ for (let i = -gridSize; i <= gridSize; i++) {
             allBlades.push(blades);
             collidableObjects.push(windmillGroup);
 
-        } else if (!hasBuilding && Math.random() < 0.5) {
+        } if (!hasBuilding && Math.random() < 0.5) {
 
             const tree = createTree();
             tree.position.set(x, 0, z);
@@ -258,19 +264,55 @@ for (let i = -gridSize; i <= gridSize; i++) {
             scene.add(tree);
             allTrees.push(tree);
             collidableObjects.push(tree);
-        } else if (!hasBuilding && Math.random() < 0.5) {
+        }  else if (!hasBuilding && Math.random() < 0.5) {
 
             const trash = createTrash();
             trash.position.set(x, 0.75, z);
 
             scene.add(trash);
             //allTrees.push(tree);
-            //collidableObjects.push(trash);
+            collidableObjects.push(trash);
+        }
+          else if (!hasBuilding && Math.random() < 0.4) {
+
+          const trashSet = createtrashcans(scene, (binType) => {
+    console.log("Bin clicked:", binType);
+    if (trashIsPicked) {
+    // blue goes to recycle
+    if (trashColor === "#0000FF" && binType === "recycle") {
+        points += 10;
+        console.log("Correct! +10");
+    }
+
+    // green goes to compost
+    if (trashColor === "#00FF00" && binType === "compost") {
+        points += 10;
+        console.log("Correct! +10");
+    }
+
+    trashIsPicked = false;
+    updateUI();
+}
+
+});
+
+// Add to scene
+scene.add(trashSet.recycleBin);
+scene.add(trashSet.trashBin);
+console.log("Trashcan +recyclebin added");
+
+// Track this trash-can pair
+trashCanSets.push(trashSet);
+
         }
     }
 
 
 }
+
+window.addEventListener("pointerdown", (event) => {
+    trashCanSets.forEach(set => set.handleClick(event, camera));
+});
 
 //BACKUP WINDMILL
 
@@ -311,6 +353,9 @@ window.addEventListener('click', onClickTreeGrow);
 let lastBuildingClicked = null;
 
 window.addEventListener("click", (event) => {
+
+   
+  
     mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
     mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
@@ -321,6 +366,19 @@ window.addEventListener("click", (event) => {
 
     for (const hit of hits) {
         const obj = hit.object;
+
+        if (obj.userData && obj.userData.type === "trash") {
+
+    trashIsPicked=true;
+    obj.material.transparent = true;
+    console.log("trash is picked");
+obj.material.opacity = 0.25;
+    function getRandomTrashColor() {
+    const colors = ["#0000FF", "#00FF00"];  // blue, green
+    return colors[Math.floor(Math.random() * colors.length)];
+}
+
+ trashColor = getRandomTrashColor();}
 
         let root = obj;
         while (root.parent && root.parent.type !== "Scene") {
@@ -370,6 +428,9 @@ window.addEventListener("click", (event) => {
         highlightMesh = null;
     }
 });
+
+  
+
 
 
 function onClickTreeGrow(event) {
@@ -516,6 +577,8 @@ function animate() {
             windmillTimers.delete(windmill);
             windmillPointTimers.delete(windmill);
         }
+        trashCanSets.forEach(set => set.animateFlaps());
+
 
     });
 

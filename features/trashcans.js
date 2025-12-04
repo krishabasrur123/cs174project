@@ -289,7 +289,7 @@ recycleTexture.generateMipmaps = true;        // default for power-of-two
 recycleTexture.minFilter = THREE.LinearMipmapLinearFilter;
 recycleTexture.magFilter = THREE.LinearFilter;
 recycleTexture.needsUpdate = true;
-console.log(recycleTexture);
+
 
 
 
@@ -309,7 +309,6 @@ compostTexture.generateMipmaps = true;
 compostTexture.minFilter = THREE.LinearMipmapLinearFilter;
 compostTexture.magFilter = THREE.LinearFilter;
 compostTexture.needsUpdate = true;
-console.log(compostTexture);
 
 const compost_mat = new THREE.ShaderMaterial({
     uniforms: {
@@ -515,11 +514,7 @@ function updateFlaps() {
 
 
 
-textureLoader.load("features/recyclelogo.png",
-  () => console.log("OK"),
-  undefined,
-  () => console.log("FAIL")
-);
+
 
 function animateFlaps() 
 { updateFlaps(); 
