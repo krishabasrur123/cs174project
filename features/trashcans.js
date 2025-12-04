@@ -1,35 +1,8 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
-const scene = new THREE.Scene();
-scene.background = new THREE.Color(0xa0d8ef);
 
-const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
-camera.position.set(6, 6, 5);
-
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setSize(window.innerWidth, window.innerHeight);
-document.body.appendChild(renderer.domElement);
-
-const orbitControls = new OrbitControls(camera, renderer.domElement);
-orbitControls.enableDamping = true;
-orbitControls.dampingFactor = 0.05;
-orbitControls.target.set(0, 3, 0);
-
-// Lights - may need to remove when integrating into buildings.js
-const sunPivot = new THREE.Object3D();
-scene.add(sunPivot);
-
-const sunLight = new THREE.DirectionalLight(0xffffff, 1.5);
-sunLight.position.set(5, 5, 5);  // starting position
-sunLight.castShadow = true;
-
-sunPivot.add(sunLight);  // attach light to pivot
-
-renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-
-
+export function createtrashcans (scene, handleClick) {
 //matrices
 function translationMatrix(tx, ty, tz) {
     return new THREE.Matrix4().set(
@@ -328,8 +301,6 @@ const trashBin   = new THREE.Mesh(boxGeom, [compost_mat,trashMat,new THREE.MeshB
 
 
 
-scene.add(recycleBin);
-scene.add(trashBin);
 
 //cube transorm to make the bins using scale
 
@@ -346,37 +317,38 @@ trashBin.matrix.copy(trashMove).multiply(scale);
 
 //flaps
 const flapMaterialG = new THREE.MeshPhongMaterial({
-    shininess: 80,
+    shininess: 30,
     side: THREE.DoubleSide,
-    color: 0x00aa00,
+    color: 0xFF00FF   // dark green
 });
 
 const flapMaterialR = new THREE.MeshPhongMaterial({
-    shininess: 80,
+    shininess: 30,
     side: THREE.DoubleSide,
-    color: 0x0066ff,
+    color: 0xFE7D6A   // dark blue
 });
+
 const flapRecycle = new THREE.Mesh(boxGeom, flapMaterialR);
 const flapTrash   = new THREE.Mesh(boxGeom, flapMaterialG);
 
-flapRecycle.matrixAutoUpdate = false;
-flapTrash.matrixAutoUpdate = false;
+flapRecycle.matrixAutoUpdate = true;
+flapTrash.matrixAutoUpdate = true;
 
-scene.add(flapRecycle);
-scene.add(flapTrash);
+recycleBin.add(flapRecycle);
+trashBin.add(flapTrash);
 
-const flapScale = scalingMatrix(1.4, 0.15, 1.4);
+
+
+
 const flapRecyclePos = translationMatrix(-2, 0, 0);
 const flapTrashPos   = translationMatrix( 2, 0, 0);
 
 let flapRecycleMatrix = new THREE.Matrix4()
     .multiply(flapRecyclePos)
-    .multiply(flapScale);
-
+;
 let flapTrashMatrix = new THREE.Matrix4()
     .multiply(flapTrashPos)
-    .multiply(flapScale);
-
+;
 flapRecycle.matrix.copy(flapRecycleMatrix);
 flapTrash.matrix.copy(flapTrashMatrix);
 
@@ -386,29 +358,30 @@ let trashFlapAngle   = 0;
 
 
 
-function setFlapMatrix(flapMesh, angleDeg, positionX, binHeight = 2.5) {
+function setFlapMatrix(flapMesh, angleDeg, positionX, binHeight=1) {
     const flapAngle = angleDeg * Math.PI / 180; // convert to radians
-    const flapScale = new THREE.Matrix4().set(
-        1.4, 0,   0,   0,
-        0,   0.15,0,   0,
-        0,   0,   1.4, 0,
-        0,   0,   0,   1
-    );
+   const flapScale = new THREE.Matrix4().set(
+    1.0, 0,   0,   0,
+    0,   .05,0,   0,
+    0,   0,   1.0, 0,
+    0,   0,   0,   1
+);
 
-    const hingeOffset = translationMatrix(positionX, flapScale.elements[5]/2, flapScale.elements[10]/2);
+    const hingeOffset = translationMatrix(0, -flapScale.elements[5]/2, -flapScale.elements[10]/2);
 
     const flapRotation = rotationXMatrix(-flapAngle);
 
-    const hingeInverse = translationMatrix(0, -flapScale.elements[5]/2 , -flapScale.elements[10]/2);
+    const hingeInverse = translationMatrix(0, flapScale.elements[5]/2 , flapScale.elements[10]/2);
 
-    const moveToTop = translationMatrix(0, binHeight+0.025, 0);
+    const moveToTop = translationMatrix(0, .525, 0);
 
     const flapMatrix = new THREE.Matrix4()
+    
         .multiply(moveToTop)
-        .multiply(hingeInverse)
-        .multiply(flapRotation)
         .multiply(hingeOffset)
-        .multiply(flapScale);
+             // <-- scale first
+        .multiply(flapRotation)    // <-- rotate after
+        .multiply(hingeInverse). multiply(flapScale) ;
 
     flapMesh.matrixAutoUpdate = false;
     flapMesh.matrix.copy(flapMatrix);
@@ -439,49 +412,32 @@ scene.add(ground);
         
 let recycleFlapVelocity = 0;       
 const FLAP_ACCEL = Math.PI / 8;    
-const MAX_FLAP_ANGLE = Math.PI / 3; 
+const MAX_FLAP_ANGLE = Math.PI / 6; 
 
 // Trash flap
 let trashFlapVelocity = 0;       
 
-let score = 0;
-let currentTrash = null; 
-
-function randomTrash() {
-    currentTrash = Math.random() < 0.5 ? "recycle" : "compost";
-    document.getElementById("scoreboard").innerText = `Score: ${score} | Current Trash: ${currentTrash}`;
-}
 
 
-randomTrash();
-
-
-document.addEventListener("keydown", (e) => {
-    if (e.key === "r" || e.key === "R") {
-        recycleFlapVelocity += FLAP_ACCEL; 
-
-        if (currentTrash === "recycle") {
-            score++;
-        }
-        randomTrash(); 
+function handleBinClick(event, camera) { 
+    const mouse = new THREE.Vector2();
+     mouse.x = (event.clientX / window.innerWidth) * 2 - 1; 
+     mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
+      const raycaster = new THREE.Raycaster(); 
+      raycaster.setFromCamera(mouse, camera); 
+      const intersects = raycaster.intersectObjects([recycleBin, trashBin]); if (intersects.length > 0) { const clicked = intersects[0].object; 
+        if (clicked === recycleBin) recycleFlapVelocity += FLAP_ACCEL; 
+        if (clicked === trashBin) trashFlapVelocity += FLAP_ACCEL; 
+        if (handleClick) handleClick(clicked === recycleBin ? 'r' : 'c');
+ } 
     }
-
-    if (e.key === "c" || e.key === "C") {
-        trashFlapVelocity += FLAP_ACCEL; 
-
-        if (currentTrash === "compost") {
-            score++;
-        }
-        randomTrash();
-    }
-});
 
 
 
 function updateFlaps() {
     const REST_ANGLE = 0; 
     const SPRING = 0.02;  
-    const DAMPING = 0.6;
+    const DAMPING = 0.5;
 
     let accelRecycle = -SPRING * (recycleFlapAngle - REST_ANGLE);
     recycleFlapVelocity += accelRecycle;
@@ -518,19 +474,17 @@ function updateFlaps() {
 }
 
 
+
 textureLoader.load("features/recyclelogo.png",
   () => console.log("OK"),
   undefined,
   () => console.log("FAIL")
 );
 
-function animate() {
-    requestAnimationFrame(animate);
-//sunPivot.rotation.y += 0.002;  
-//sunPivot.rotation.x = -0.4;    
+function animateFlaps() 
+{ updateFlaps(); 
 
-    updateFlaps();
-    orbitControls.update();
-    renderer.render(scene, camera);
+} 
+return { recycleBin, trashBin, animateFlaps, handleClick:handleBinClick  };
+
 }
-animate();
