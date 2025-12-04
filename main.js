@@ -261,7 +261,7 @@ for (let i = -gridSize; i <= gridSize; i++) {
         } else if (!hasBuilding && Math.random() < 0.5) {
 
             const trash = createTrash();
-            trash.position.set(x, 1.5, z);
+            trash.position.set(x, 0.75, z);
 
             scene.add(trash);
             //allTrees.push(tree);

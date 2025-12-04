@@ -11,7 +11,7 @@ export function createTrash() {
 
     //const geometry = new THREE.SphereGeometry(2, 64, 64); // small sphere trash
 
-    const geometry = new THREE.IcosahedronGeometry(2, 0);
+    const geometry = new THREE.IcosahedronGeometry(1, 0);
 
     //const material = new THREE.MeshStandardMaterial({ color: 0x555555 });
     const material = new THREE.MeshStandardMaterial({
