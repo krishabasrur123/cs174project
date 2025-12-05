@@ -42,172 +42,182 @@ Inside your animation loop:
 */
 
 
-export function createtrashcans(scene, handleClick) {
-    //matrices
-    function translationMatrix(tx, ty, tz) {
-        return new THREE.Matrix4().set(
-            1, 0, 0, tx,
-            0, 1, 0, ty,
-            0, 0, 1, tz,
-            0, 0, 0, 1
-        );
-    }
+export function createtrashcans (scene, handleClick) {
+//matrices
+function translationMatrix(tx, ty, tz) {
+    return new THREE.Matrix4().set(
+        1, 0, 0, tx,
+        0, 1, 0, ty,
+        0, 0, 1, tz,
+        0, 0, 0, 1
+    );
+}
 
-    function scalingMatrix(sx, sy, sz) {
-        return new THREE.Matrix4().set(
-            sx, 0, 0, 0,
-            0, sy, 0, 0,
-            0, 0, sz, 0,
-            0, 0, 0, 1
-        );
-    }
+function scalingMatrix(sx, sy, sz) {
+    return new THREE.Matrix4().set(
+        sx, 0,  0,  0,
+        0, sy,  0,  0,
+        0,  0, sz,  0,
+        0,  0,  0,  1
+    );
+}
+function rotationXMatrix(theta) {
+    return new THREE.Matrix4().set(
+        1,                0,                 0, 0,
+        0,  Math.cos(theta), -Math.sin(theta), 0,
+        0,  Math.sin(theta),  Math.cos(theta), 0,
+        0,                0,                 0, 1
+    );
+}
 
-    function rotationXMatrix(theta) {
-        return new THREE.Matrix4().set(
-            1, 0, 0, 0,
-            0, Math.cos(theta), -Math.sin(theta), 0,
-            0, Math.sin(theta), Math.cos(theta), 0,
-            0, 0, 0, 1
-        );
-    }
+function rotationYMatrix(theta) {
+    return new THREE.Matrix4().set(
+         Math.cos(theta), 0, Math.sin(theta), 0,
+         0,               1,                0, 0,
+        -Math.sin(theta), 0, Math.cos(theta), 0,
+         0,               0,                0, 1
+    );
+}
 
-    function rotationYMatrix(theta) {
-        return new THREE.Matrix4().set(
-            Math.cos(theta), 0, Math.sin(theta), 0,
-            0, 1, 0, 0, -Math.sin(theta), 0, Math.cos(theta), 0,
-            0, 0, 0, 1
-        );
-    }
+function rotationZMatrix(theta) {
+    return new THREE.Matrix4().set(
+        Math.cos(theta), -Math.sin(theta), 0, 0,
+        Math.sin(theta),  Math.cos(theta), 0, 0,
+        0,                0,               1, 0,
+        0,                0,               0, 1
+    );
+}
 
-    function rotationZMatrix(theta) {
-        return new THREE.Matrix4().set(
-            Math.cos(theta), -Math.sin(theta), 0, 0,
-            Math.sin(theta), Math.cos(theta), 0, 0,
-            0, 0, 1, 0,
-            0, 0, 0, 1
-        );
-    }
+//cube geometry
+const l = 0.5;
+const positions = new Float32Array([
+    // Front
+    -l, -l,  l, 
+     l, -l,  l, 
+      l,  l,  l,  
+      -l,  l,  l,
 
-    //cube geometry
-    const l = 0.5;
-    const positions = new Float32Array([
-        // Front
-        -l, -l, l,
-        l, -l, l,
-        l, l, l, -l, l, l,
+    // Left
+    -l, -l, -l,
+     -l, -l,  l,
+      -l,  l,  l,
+       -l,  l, -l,
 
-        // Left
-        -l, -l, -l, -l, -l, l, -l, l, l, -l, l, -l,
+    // Top
+    -l,  l,  l, 
+     l,  l,  l, 
+      l,  l, -l,
+       -l,  l, -l,
 
-        // Top
-        -l, l, l,
-        l, l, l,
-        l, l, -l, -l, l, -l,
+    // Bottom
+    -l, -l,  l, 
+    -l, -l, -l, 
+    
+    l, -l, -l,  
+    l, -l,  l,
 
-        // Bottom
-        -l, -l, l, -l, -l, -l,
+    // Right
+   l, -l,  l,
+ l, -l, -l,
+ l,  l, -l,
+ l,  l,  l,
 
-        l, -l, -l,
-        l, -l, l,
+    // Back
+    -l, -l, -l,
+     -l,  l, -l, 
+     l,  l, -l,
+      l, -l, -l
+]);
 
-        // Right
-        l, -l, l,
-        l, -l, -l,
-        l, l, -l,
-        l, l, l,
+const indices = [
+    // front
+    0,1,2,
+     0,2,3,
 
-        // Back
-        -l, -l, -l, -l, l, -l,
-        l, l, -l,
-        l, -l, -l
-    ]);
+    // left
+    4,5,6, 
+    4,6,7,
+    //top
 
-    const indices = [
-        // front
-        0, 1, 2,
-        0, 2, 3,
+    8,9,10,  
+    8,10,11,
 
-        // left
-        4, 5, 6,
-        4, 6, 7,
-        //top
+    // bottom
+    12,13,14, 
+    12,14,15,
 
-        8, 9, 10,
-        8, 10, 11,
+    // right
+    16,17,18, 
+    16,18,19,
 
-        // bottom
-        12, 13, 14,
-        12, 14, 15,
+    // back
+    20,21,22, 
+    20,22,23
+];
 
-        // right
-        16, 17, 18,
-        16, 18, 19,
+const normals = new Float32Array([
+    // front
+    0,0,1, 
+    0,0,1, 
+    0,0,1,
+     0,0,1,
 
-        // back
-        20, 21, 22,
-        20, 22, 23
-    ];
+    // left
+    -1,0,0, 
+    -1,0,0, 
+    -1,0,0, 
+    -1,0,0,
 
-    const normals = new Float32Array([
-        // front
-        0, 0, 1,
-        0, 0, 1,
-        0, 0, 1,
-        0, 0, 1,
+    // top
+    0,1,0, 
+    0,1,0, 
+    0,1,0,
+     0,1,0,
 
-        // left
-        -1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0,
+    // bottom
+    0,-1,0,
+     0,-1,0,
+      0,-1,0, 
+      0,-1,0,
 
-        // top
-        0, 1, 0,
-        0, 1, 0,
-        0, 1, 0,
-        0, 1, 0,
+    // right
+    1,0,0, 
+    1,0,0, 
+    1,0,0, 
+    1,0,0,
 
-        // bottom
-        0, -1, 0,
-        0, -1, 0,
-        0, -1, 0,
-        0, -1, 0,
+    // back
+    0,0,-1,
+     0,0,-1, 
+     0,0,-1, 
+     0,0,-1
+]);
 
-        // right
-        1, 0, 0,
-        1, 0, 0,
-        1, 0, 0,
-        1, 0, 0,
+const uvs = new Float32Array([
+    // Front
+    0,0, 1,0, 1,1, 0,1,
 
-        // back
-        0, 0, -1,
-        0, 0, -1,
-        0, 0, -1,
-        0, 0, -1
-    ]);
+    // Left
+    0,0, 1,0, 1,1, 0,1,
 
-    const uvs = new Float32Array([
-        // Front
-        0, 0, 1, 0, 1, 1, 0, 1,
+    // Top
+    0,0, 1,0, 1,1, 0,1,
 
-        // Left
-        0, 0, 1, 0, 1, 1, 0, 1,
+    // Bottom
+    0,0, 1,0, 1,1, 0,1,
 
-        // Top
-        0, 0, 1, 0, 1, 1, 0, 1,
+    // Right
+    0,0, 1,0, 1,1, 0,1,
 
-        // Bottom
-        0, 0, 1, 0, 1, 1, 0, 1,
-
-        // Right
-        0, 0, 1, 0, 1, 1, 0, 1,
-
-        // Back
-        0, 0, 1, 0, 1, 1, 0, 1,
-    ]);
+    // Back
+    0,0, 1,0, 1,1, 0,1,
+]);
 
 
 
-    class Texture_Bin { //bin texture
-        vertexShader() {
-            return `
+class Texture_Bin { //bin texture
+    vertexShader() {
+        return `
         uniform sampler2D uTexture;
         varying vec2 vUv;
         varying vec3 vPosition;
@@ -270,6 +280,10 @@ export function createtrashcans(scene, handleClick) {
 
     const textureLoader = new THREE.TextureLoader();
 
+compostTexture.generateMipmaps = true;       
+compostTexture.minFilter = THREE.LinearMipmapLinearFilter;
+compostTexture.magFilter = THREE.LinearFilter;
+compostTexture.needsUpdate = true;
 
     const recycleTexture = textureLoader.load('features/recyclelogo.png');
     const compostTexture = textureLoader.load('features/compostlogo.png');
@@ -314,9 +328,6 @@ export function createtrashcans(scene, handleClick) {
 
 
 
-    const recycleMat = new THREE.MeshPhongMaterial({ color: 0x0066ff, shininess: 50, side: THREE.DoubleSide });
-    const trashMat = new THREE.MeshPhongMaterial({ color: 0x00aa00, shininess: 50, side: THREE.DoubleSide }); // green
-    const mat_top = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0 });
 
 
 
@@ -325,18 +336,42 @@ export function createtrashcans(scene, handleClick) {
 
     const recycleBin = new THREE.Mesh(boxGeom, materials);
 
+//flaps
+const flapMaterialG = new THREE.MeshPhongMaterial({
+    shininess: 30,
+    side: THREE.DoubleSide,
+    color: 0xFF00FF   // dark green
+});
 
-    const trashBin = new THREE.Mesh(boxGeom, [compost_mat, trashMat, new THREE.MeshBasicMaterial({ transparent: true, opacity: 0 }), trashMat, trashMat, trashMat]);
+const flapMaterialR = new THREE.MeshPhongMaterial({
+    shininess: 30,
+    side: THREE.DoubleSide,
+    color: 0xFE7D6A   // dark blue
+});
+
+const flapRecycle = new THREE.Mesh(boxGeom, flapMaterialR);
+const flapTrash   = new THREE.Mesh(boxGeom, flapMaterialG);
+
+flapRecycle.matrixAutoUpdate = true;
+flapTrash.matrixAutoUpdate = true;
+
+recycleBin.add(flapRecycle);
+trashBin.add(flapTrash);
 
 
 
 
-    //cube transorm to make the bins using scale
+const flapRecyclePos = translationMatrix(-2, 0, 0);
+const flapTrashPos   = translationMatrix( 2, 0, 0);
 
-    const scale = scalingMatrix(1.4, 2.5, 1.4);
-
-    const recycleMove = translationMatrix(-2, 1.2, 0);
-    const trashMove = translationMatrix(2, 1.2, 0);
+let flapRecycleMatrix = new THREE.Matrix4()
+    .multiply(flapRecyclePos)
+;
+let flapTrashMatrix = new THREE.Matrix4()
+    .multiply(flapTrashPos)
+;
+flapRecycle.matrix.copy(flapRecycleMatrix);
+flapTrash.matrix.copy(flapTrashMatrix);
 
     recycleBin.matrixAutoUpdate = false;
     trashBin.matrixAutoUpdate = false;
@@ -357,17 +392,31 @@ export function createtrashcans(scene, handleClick) {
         color: 0xFE7D6A // dark blue
     });
 
-    const flapRecycle = new THREE.Mesh(boxGeom, flapMaterialR);
-    const flapTrash = new THREE.Mesh(boxGeom, flapMaterialG);
+function setFlapMatrix(flapMesh, angleDeg, positionX, binHeight=1) {
+    const flapAngle = angleDeg * Math.PI / 180; // convert to radians
+   const flapScale = new THREE.Matrix4().set(
+    1.0, 0,   0,   0,
+    0,   .05,0,   0,
+    0,   0,   1.0, 0,
+    0,   0,   0,   1
+);
 
-    flapRecycle.matrixAutoUpdate = true;
-    flapTrash.matrixAutoUpdate = true;
+    const hingeOffset = translationMatrix(0, -flapScale.elements[5]/2, -flapScale.elements[10]/2);
 
     recycleBin.add(flapRecycle);
     trashBin.add(flapTrash);
 
+    const hingeInverse = translationMatrix(0, flapScale.elements[5]/2 , flapScale.elements[10]/2);
 
+    const moveToTop = translationMatrix(0, .525, 0);
 
+    const flapMatrix = new THREE.Matrix4()
+    
+        .multiply(moveToTop)
+        .multiply(hingeOffset)
+             // <-- scale first
+        .multiply(flapRotation)    // <-- rotate after
+        .multiply(hingeInverse). multiply(flapScale) ;
 
     const flapRecyclePos = translationMatrix(-2, 0, 0);
     const flapTrashPos = translationMatrix(2, 0, 0);
@@ -402,7 +451,10 @@ export function createtrashcans(scene, handleClick) {
 
         const moveToTop = translationMatrix(0, .525, 0);
 
-        const flapMatrix = new THREE.Matrix4()
+        
+let recycleFlapVelocity = 0;       
+const FLAP_ACCEL = Math.PI / 8;    
+const MAX_FLAP_ANGLE = Math.PI / 6; 
 
         .multiply(moveToTop)
             .multiply(hingeOffset)
@@ -410,67 +462,32 @@ export function createtrashcans(scene, handleClick) {
             .multiply(flapRotation) // <-- rotate after
             .multiply(hingeInverse).multiply(flapScale);
 
-        flapMesh.matrixAutoUpdate = false;
-        flapMesh.matrix.copy(flapMatrix);
-    }
-
-    //shadow work
-    recycleBin.castShadow = true;
-    recycleBin.receiveShadow = true;
-
-    trashBin.castShadow = true;
-    trashBin.receiveShadow = true;
-
-    let recycleFlapVelocity = 0;
-    const FLAP_ACCEL = Math.PI / 8;
-    const MAX_FLAP_ANGLE = Math.PI / 6;
-
-    // Trash flap
-    let trashFlapVelocity = 0;
-
-    function handleBinClick(event, camera) {
-        const mouse = new THREE.Vector2();
-        mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-        mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-        const raycaster = new THREE.Raycaster();
-        raycaster.setFromCamera(mouse, camera);
-        const intersects = raycaster.intersectObjects([recycleBin, trashBin]);
-        if (intersects.length > 0) {
-            const clicked = intersects[0].object;
-            if (clicked === recycleBin) recycleFlapVelocity += FLAP_ACCEL;
-            if (clicked === trashBin) trashFlapVelocity += FLAP_ACCEL;
-            if (handleClick) handleClick(clicked === recycleBin ? 'r' : 'c');
-        }
-    }
-
-
 
     function updateFlaps() {
         const REST_ANGLE = 0;
         const SPRING = 0.02;
         const DAMPING = 0.5;
 
-        let accelRecycle = -SPRING * (recycleFlapAngle - REST_ANGLE);
-        recycleFlapVelocity += accelRecycle;
-        recycleFlapVelocity *= DAMPING;
-        recycleFlapAngle += recycleFlapVelocity;
+function handleBinClick(event, camera) { 
+    const mouse = new THREE.Vector2();
+     mouse.x = (event.clientX / window.innerWidth) * 2 - 1; 
+     mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
+      const raycaster = new THREE.Raycaster(); 
+      raycaster.setFromCamera(mouse, camera); 
+      const intersects = raycaster.intersectObjects([recycleBin, trashBin]); if (intersects.length > 0) { const clicked = intersects[0].object; 
+        if (clicked === recycleBin) recycleFlapVelocity += FLAP_ACCEL; 
+        if (clicked === trashBin) trashFlapVelocity += FLAP_ACCEL; 
+        if (handleClick) handleClick(clicked === recycleBin ? 'r' : 'c');
+ } 
+    }
 
-        if (recycleFlapAngle > MAX_FLAP_ANGLE) {
-            recycleFlapAngle = MAX_FLAP_ANGLE;
-            recycleFlapVelocity = 0;
-        }
-        if (recycleFlapAngle < 0) {
-            recycleFlapAngle = 0;
-            recycleFlapVelocity = 0;
-        }
 
         setFlapMatrix(flapRecycle, recycleFlapAngle * 180 / Math.PI, -2);
 
-        // --- Trash flap ---
-        let accelTrash = -SPRING * (trashFlapAngle - REST_ANGLE);
-        trashFlapVelocity += accelTrash;
-        trashFlapVelocity *= DAMPING;
-        trashFlapAngle += trashFlapVelocity;
+function updateFlaps() {
+    const REST_ANGLE = 0; 
+    const SPRING = 0.02;  
+    const DAMPING = 0.5;
 
         if (trashFlapAngle > MAX_FLAP_ANGLE) {
             trashFlapAngle = MAX_FLAP_ANGLE;
@@ -491,8 +508,13 @@ export function createtrashcans(scene, handleClick) {
     function animateFlaps() {
         updateFlaps();
 
-    }
-    return { recycleBin, trashBin, animateFlaps, handleClick: handleBinClick };
 
+
+
+function animateFlaps() 
+{ updateFlaps(); 
+
+} 
+return { recycleBin, trashBin, animateFlaps, handleClick:handleBinClick  };
 
 }

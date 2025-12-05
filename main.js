@@ -256,7 +256,7 @@ function createTile(x, z, isRoad) {
 //     callback(fractionGreen > 0.2); // 20% green = qualifies for tree
 // }
 
-
+let trashCanSets=[]
 for (let i = -gridSize; i <= gridSize; i++) {
     for (let j = -gridSize; j <= gridSize; j++) {
         const x = i * spacing;
@@ -323,7 +323,7 @@ for (let i = -gridSize; i <= gridSize; i++) {
             allBlades.push(blades);
             collidableObjects.push(windmillGroup);
 
-        } else if (!hasBuilding && Math.random() < 0.5) {
+        } if (!hasBuilding && Math.random() < 0.5) {
 
             const tree = createTree();
             tree.position.set(x, 0, z);
@@ -364,6 +364,10 @@ for (let i = -gridSize; i <= gridSize; i++) {
 
 
 }
+
+window.addEventListener("pointerdown", (event) => {
+    trashCanSets.forEach(set => set.handleClick(event, camera));
+});
 
 //BACKUP WINDMILL
 
@@ -511,6 +515,9 @@ window.addEventListener('click', onClickTreeGrow);
 let lastBuildingClicked = null;
 
 window.addEventListener("click", (event) => {
+
+   
+  
     mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
     mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
@@ -830,6 +837,8 @@ function animate() {
             windmillTimers.delete(windmill);
             windmillPointTimers.delete(windmill);
         }
+        trashCanSets.forEach(set => set.animateFlaps());
+
 
     });
 
