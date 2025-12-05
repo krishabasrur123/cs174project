@@ -43,6 +43,7 @@ let targetPoints = 75;
 let selectedTrash = null;
 let selectedFruit = null;
 let inputEnabled = true;
+let placedObjects = [];
 
 // Highlight materials
 const trashHighlightMaterial = new THREE.MeshBasicMaterial({ color: 0xffff00, transparent: true, opacity: 0.20 });
@@ -138,6 +139,7 @@ trashBin.userData.type = "trashBin";
 interactiveObjects.push(recycleBin, trashBin);
 binObjects.push(recycleBin, trashBin);
 collidableObjects.push(recycleBin, trashBin);
+placedObjects.push(recycleBin, trashBin);
 
 const buildingTextures = [
     "/textures/building1.png",
@@ -262,6 +264,7 @@ for (let i = -gridSize; i <= gridSize; i++) {
 
             scene.add(building);
             allBuildings.push(building);
+            placedObjects.push(building);
         }
 
         // GRASS SPAWNS: windmill / tree / trash / fruit (only one per tile)
@@ -285,6 +288,8 @@ for (let i = -gridSize; i <= gridSize; i++) {
                 scene.add(windmillGroup);
                 allWindwills.push(windmillGroup);
                 allBlades.push(blades);
+                placedObjects.push(windmillGroup);
+
             }
 
             if (!hasWindmill && Math.random() < 0.5) {
@@ -309,6 +314,8 @@ for (let i = -gridSize; i <= gridSize; i++) {
 
                 scene.add(tree);
                 allTrees.push(tree);
+                placedObjects.push(tree);
+
             }
 
             if (!hasWindmill && !hasTree && Math.random() < 0.3) {
@@ -335,10 +342,55 @@ for (let i = -gridSize; i <= gridSize; i++) {
                 collidableObjects.push(fruit);
 
                 scene.add(fruit);
+                placedObjects.push(fruit);
             }
         }
     }
 }
+
+function objectsOverlap(objA, objB, padding = 0.5) {
+    const boxA = new THREE.Box3().setFromObject(objA);
+    const boxB = new THREE.Box3().setFromObject(objB);
+
+    boxA.expandByScalar(padding);
+    boxB.expandByScalar(padding);
+
+    return boxA.intersectsBox(boxB);
+}
+
+function canPlaceObject(newObj, padding = 0.5) {
+    for (const existing of placedObjects) {
+
+        if (objectsOverlap(newObj, existing, padding)) {
+
+            // allow solar panels placed onto buildings ONLY
+            const newIsSolar = isSolarPanel(newObj);
+            const existingIsBuilding = isBuilding(existing);
+
+            const placedOnTopOfBuilding =
+                newIsSolar && existingIsBuilding;
+
+            if (placedOnTopOfBuilding) {
+                return true; // allowed intentional overlap
+            }
+
+            // otherwise overlap is forbidden
+            return false;
+        }
+    }
+
+    return true;
+}
+
+// --- helpers for placement rules ---
+function isSolarPanel(obj) {
+    return !!(obj && obj.userData && obj.userData.type === 'solar');
+}
+
+function isBuilding(obj) {
+    return !!(obj && obj.userData && obj.userData.type === 'building');
+}
+
 
 // helper: safe remove + dispose + clear highlight
 function removeObject(obj) {
@@ -730,7 +782,7 @@ window.addEventListener("keydown", (e) => {
 
     console.log("Solar panel cloned onto building!");
     solarPanels--;
-    points += 3;
+    points += 4;
     updateUI();
 });
 
