@@ -37,7 +37,7 @@ let allBuildings = [];
 let selectedBuilding = null;
 let windmillTimers = new Map();
 let windmillPointTimers = new Map();
-let gameTime = 60;
+let gameTime = 300;
 let gameRunning = true;
 let targetPoints = 75;
 let selectedTrash = null;
@@ -107,9 +107,6 @@ const CameraController = createCameraController(camera, scene, collidableObjects
 
 const baseSolarPanel = createSolarPanel();
 
-const light = new THREE.DirectionalLight(0xffffff, 1);
-light.position.set(3, 10, 5);
-scene.add(light);
 
 const sunLight = new THREE.DirectionalLight(0xffffff, 1.0);
 sunLight.position.set(30, 50, 20);
@@ -124,6 +121,7 @@ sunLight.shadow.camera.top = 120;
 sunLight.shadow.camera.bottom = -120;
 
 const ambient = new THREE.AmbientLight(0xffffff, 0.7);
+ambient.intensity = 2; 
 scene.add(ambient);
 scene.add(sunLight);
 
