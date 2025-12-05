@@ -109,7 +109,10 @@ const baseSolarPanel = createSolarPanel();
 
 
 const sunLight = new THREE.DirectionalLight(0xffffff, 1.0);
-sunLight.position.set(30, 50, 20);
+
+let sunAngle = 0;          
+const sunRadius = 80;    
+
 sunLight.castShadow = true;
 sunLight.shadow.mapSize.width = 2048;
 sunLight.shadow.mapSize.height = 2048;
@@ -120,8 +123,9 @@ sunLight.shadow.camera.right = 120;
 sunLight.shadow.camera.top = 120;
 sunLight.shadow.camera.bottom = -120;
 
+
 const ambient = new THREE.AmbientLight(0xffffff, 0.7);
-ambient.intensity = 2; 
+ambient.intensity = 1.3; 
 scene.add(ambient);
 scene.add(sunLight);
 
@@ -786,6 +790,16 @@ window.addEventListener("keydown", (e) => {
 
 function animate() {
     requestAnimationFrame(animate);
+    sunAngle += 0.0009; 
+
+sunLight.position.set(
+    Math.cos(sunAngle) * sunRadius,
+    Math.sin(sunAngle) * sunRadius,
+    40                             
+);
+
+sunLight.lookAt(0, 0, 0); // sun always points at the world
+
 
     // ONLY update orbit controls while dragging (no more conflict!)
     if (controls.isDragging) controls.update();
