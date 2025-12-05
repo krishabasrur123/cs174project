@@ -13,15 +13,12 @@ const loader = new THREE.TextureLoader();
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
 
-// Scene
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xa0d8ef);
 
-// Camera
 const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
 camera.position.set(3, 3, 5);
 
-// Renderer
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
@@ -29,7 +26,6 @@ document.body.appendChild(renderer.domElement);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
-// --- Game State ---
 let wateringCans = 10;
 let solarPanels = 10;
 let wind = 0;
@@ -68,7 +64,6 @@ const highlightMaterial = new THREE.MeshBasicMaterial({
 let highlightMesh = null;
 
 
-// --- UI Display ---
 const ui = document.createElement("div");
 ui.style.position = "absolute";
 ui.style.top = "10px";
@@ -110,7 +105,6 @@ updateUI();
 
 
 
-// Controls
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.dampingFactor = 0.05;
@@ -121,7 +115,6 @@ const CameraController = createCameraController(camera, scene, collidableObjects
 const baseSolarPanel = createSolarPanel();
 
 
-// Lighting
 const light = new THREE.DirectionalLight(0xffffff, 1);
 light.position.set(3, 10, 5);
 scene.add(light);
@@ -143,22 +136,10 @@ scene.add(ambient);
 
 scene.add(sunLight);
 
-// Ground
-const roadTexture = loader.load("/textures/road3.png");
-roadTexture.wrapS = roadTexture.wrapT = THREE.RepeatWrapping;
-
-roadTexture.repeat.set(0.80, 0.80);
-const grassTexture = loader.load("/textures/ground.jpg");
-grassTexture.wrapS = grassTexture.wrapT = THREE.RepeatWrapping;
-
-
-// const trashcanSystem = createtrashcans(scene, handleTrashBinClick);
-// scene.add(trashcanSystem.recycleBin);
-// scene.add(trashcanSystem.trashBin);
 
 const { recycleBin, trashBin, animateFlaps, handleClick } =
 createtrashcans(scene, (binType) => {
-    console.log("Bin clicked:", binType); // 'r' for recycle, 'c' for compost
+    console.log("Bin clicked:", binType);
 });
 
 scene.add(recycleBin);
@@ -167,7 +148,6 @@ scene.add(trashBin);
 recycleBin.userData.type = "recycleBin";
 trashBin.userData.type = "trashBin";
 
-// Building textures
 const buildingTextures = [
     "/textures/building1.png",
     "/textures/building2.png",
@@ -182,7 +162,6 @@ let allBlades = []
 let allWindwills = [];
 let allTrees = [];
 
-// Create buildings 
 const gridSize = 10;
 const spacing = 10;
 
@@ -209,68 +188,79 @@ function startGameTimer() {
 
 startGameTimer();
 
-
-
-function createTile(x, z, isRoad) {
+function createTile(x, z, type) {
     const tileGeom = new THREE.PlaneGeometry(10, 10);
 
-    const tileMat = new THREE.MeshStandardMaterial({
-        map: isRoad ? grassTexture : roadTexture,
-        side: THREE.FrontSide,
+    let texturePath = "/textures/grass.jpg";
+    let repeatX = 2;
+    let repeatY = 2;
+
+    if (type === "road") {
+        texturePath = "/textures/road.jpg";
+        repeatX = 1;
+        repeatY = 1;
+    }
+
+    if (type === "sidewalk") {
+        texturePath = "/textures/sidewalk.jpg";
+        repeatX = 2;
+        repeatY = 2;
+    }
+
+    const tex = loader.load(texturePath);
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(repeatX, repeatY);
+
+    const tileMaterial = new THREE.MeshStandardMaterial({ 
+        map: tex,
+        roughness: 0.8,
+        metalness: 0.0
     });
 
-    const tile = new THREE.Mesh(tileGeom, tileMat);
+    if (type === "road") {
+        
+    }
+
+    if (type === "sidewalk") {
+        tileMaterial.color = new THREE.Color(0xcccccc);
+    }
+
+    const tile = new THREE.Mesh(tileGeom, tileMaterial);
+
     tile.rotation.x = -Math.PI / 2;
     tile.position.set(x, 0, z);
     tile.receiveShadow = true;
 
     scene.add(tile);
-
     groundTiles.push(tile);
 }
 
-
-// function isTextureGreen(texture, callback) {
-//     const image = texture.image;
-//     const canvas = document.createElement("canvas");
-//     const ctx = canvas.getContext("2d");
-
-//     canvas.width = image.width;
-//     canvas.height = image.height;
-//     ctx.drawImage(image, 0, 0);
-
-//     const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
-
-//     let greenCount = 0;
-//     let total = canvas.width * canvas.height;
-
-//     for (let i = 0; i < data.length; i += 4) {
-//         const r = data[i];
-//         const g = data[i + 1];
-//         const b = data[i + 2];
-
-//         if (g > r + 20 && g > b + 20) greenCount++;
-//     }
-
-//     const fractionGreen = greenCount / total;
-//     callback(fractionGreen > 0.2); // 20% green = qualifies for tree
-// }
 
 let trashCanSets=[]
 for (let i = -gridSize; i <= gridSize; i++) {
     for (let j = -gridSize; j <= gridSize; j++) {
         const x = i * spacing;
         const z = j * spacing;
-        let hasBuilding = false;
-        if (Math.random() < 0.15) {
-            hasBuilding = true;
 
-            // Random dimensions
+        let tileType = "grass";
+        let hasBuilding = false;
+
+        if (i % 4 === 0 || j % 4 === 0) {
+            tileType = "road";
+        }
+
+        if (tileType !== "road" && Math.random() < 0.15) {
+            hasBuilding = true;
+            tileType = "sidewalk";
+        }
+
+        createTile(x, z, tileType);
+
+        if (hasBuilding) {
             const height = 7 + Math.random() * 10;
             const width = 5 + Math.random() * 3;
             const depth = 3 + Math.random() * 3;
 
-            // Random texture
             const texturePath = buildingTextures[Math.floor(Math.random() * buildingTextures.length)];
             const geometry = new THREE.BoxGeometry(width, height, depth);
             const texture = loader.load(texturePath);
@@ -279,7 +269,6 @@ for (let i = -gridSize; i <= gridSize; i++) {
             texture.wrapT = THREE.RepeatWrapping;
             texture.repeat.set(1, 1);
 
-            // Materials
             const sideMaterial = new THREE.MeshStandardMaterial({
                 map: texture,
                 roughness: 0.8,
@@ -298,7 +287,6 @@ for (let i = -gridSize; i <= gridSize; i++) {
                 sideMaterial
             ];
 
-            // Create building mesh
             const building = new THREE.Mesh(geometry, material);
             building.position.set(x, height / 2, z);
             building.castShadow = true;
@@ -308,79 +296,72 @@ for (let i = -gridSize; i <= gridSize; i++) {
 
             collidableObjects.push(building);
         }
-        createTile(x, z, hasBuilding);
 
-        if (!hasBuilding && Math.random() < 0.1) {
-            const { windmillGroup, bladeGroup: blades } = createWindmill();
-            windmillGroup.position.set(x, -1, z);
-            scene.add(windmillGroup);
+        if (tileType === "grass") {
+            let hasWindmill = false;
+            let hasTree = false;
+            let hasTrash = false;
+            let hasFruit = false;
 
-            // NEW — add interaction state
-            windmillGroup.userData.spin = false;
-            windmillGroup.userData.blades = blades;
+            if (Math.random() < 0.1) {
+                hasWindmill = true;
+                const { windmillGroup, bladeGroup: blades } = createWindmill();
+                windmillGroup.position.set(x, -1, z);
+                scene.add(windmillGroup);
 
-            allWindwills.push(windmillGroup);
-            allBlades.push(blades);
-            collidableObjects.push(windmillGroup);
+                windmillGroup.userData.spin = false;
+                windmillGroup.userData.blades = blades;
 
-        } if (!hasBuilding && Math.random() < 0.5) {
+                allWindwills.push(windmillGroup);
+                allBlades.push(blades);
+                collidableObjects.push(windmillGroup);
+            }
 
-            const tree = createTree();
-            tree.position.set(x, 0, z);
-            tree.castShadow = true;
-            tree.receiveShadow = true;
+            if (!hasWindmill && Math.random() < 0.5) {
+                hasTree = true;
+                const tree = createTree();
+                tree.position.set(x, 0, z);
+                tree.castShadow = true;
+                tree.receiveShadow = true;
 
-            tree.traverse((child) => {
-                if (child.isMesh) {
-                    child.castShadow = true;
-                    child.receiveShadow = true;
-                }
-            });
-            scene.add(tree);
-            allTrees.push(tree);
-            collidableObjects.push(tree);
-        } else if (!hasBuilding && Math.random() < 0.8) {
+                tree.traverse((child) => {
+                    if (child.isMesh) {
+                        child.castShadow = true;
+                        child.receiveShadow = true;
+                    }
+                });
+                scene.add(tree);
+                allTrees.push(tree);
+                collidableObjects.push(tree);
+            }
 
-            const trash = createTrash();
+            if (!hasWindmill && !hasTree && Math.random() < 0.3) {
+                hasTrash = true;
+                const trash = createTrash();
+                trash.position.set(x, 0.75, z);
+                scene.add(trash);
+                trash.userData.type = "trash";
+                collidableObjects.push(trash);
+            }
 
-            trash.position.set(x, 0.75, z);
-
-            scene.add(trash);
-            trash.userData.type = "trash";
-            //allTrees.push(tree);
-            collidableObjects.push(trash);
-        } else if (!hasBuilding && Math.random() < 0.9) {
-
-            const fruit = createFruit();
-
-            fruit.position.set(x, 0.75, z);
-
-            scene.add(fruit);
-            fruit.userData.type = "fruit";
-            //allTrees.push(tree);
-            collidableObjects.push(fruit);
+            if (!hasWindmill && !hasTree && !hasTrash && Math.random() < 0.3) {
+                hasFruit = true;
+                const fruit = createFruit();
+                fruit.position.set(x, 0.75, z);
+                scene.add(fruit);
+                fruit.userData.type = "fruit";
+                collidableObjects.push(fruit);
+            }
         }
     }
-
-
 }
 
 window.addEventListener("pointerdown", (event) => {
     trashCanSets.forEach(set => set.handleClick(event, camera));
 });
 
-//BACKUP WINDMILL
-
-// let windmillRotation = 0;
-// const stableRange = 5 * (Math.PI / 180);
-// const fallSpeed = 0.01;
-
-// document.addEventListener('keydown', (e) => {
-//     // if (e.key === 'o') windmillRotation -= 0.05;
-// });
 
 function selectBuilding(building) {
-    // Remove old highlight
     if (highlightMesh) {
         scene.remove(highlightMesh);
         highlightMesh = null;
@@ -388,7 +369,6 @@ function selectBuilding(building) {
 
     selectedBuilding = building;
 
-    // Create highlight mesh slightly larger
     const geo = new THREE.BoxGeometry(
         building.geometry.parameters.width * 1.05,
         building.geometry.parameters.height * 1.05,
@@ -403,7 +383,6 @@ function selectBuilding(building) {
 }
 
 function selectTrash(trash) {
-    // remove previous trash highlight
     if (trashHighlightMesh) {
         scene.remove(trashHighlightMesh);
         trashHighlightMesh = null;
@@ -411,12 +390,10 @@ function selectTrash(trash) {
 
     selectedTrash = trash;
 
-    // compute bounding box of the trash so highlight matches size
     const box = new THREE.Box3().setFromObject(trash);
     const size = new THREE.Vector3();
     box.getSize(size);
 
-    // fallback sizes if something is missing
     const sx = size.x > 0 ? size.x * 1.15 : 1.05;
     const sy = size.y > 0 ? size.y * 1.15 : 1.05;
     const sz = size.z > 0 ? size.z * 1.15 : 1.05;
@@ -424,12 +401,10 @@ function selectTrash(trash) {
     const geo = new THREE.BoxGeometry(sx, sy, sz);
     trashHighlightMesh = new THREE.Mesh(geo, trashHighlightMaterial);
 
-    // place highlight at the trash world position (not parent-local)
     const worldPos = new THREE.Vector3();
     trash.getWorldPosition(worldPos);
     trashHighlightMesh.position.copy(worldPos);
 
-    // Make sure highlight doesn't cast/receive shadows and sits slightly above to avoid z-fighting
     trashHighlightMesh.castShadow = false;
     trashHighlightMesh.receiveShadow = false;
     trashHighlightMesh.renderOrder = 999;
@@ -440,7 +415,6 @@ function selectTrash(trash) {
 }
 
 function selectFruit(fruit) {
-    // remove previous trash highlight
     if (fruitHighlightMesh) {
         scene.remove(fruitHighlightMesh);
         fruitHighlightMesh = null;
@@ -448,12 +422,10 @@ function selectFruit(fruit) {
 
     selectedFruit = fruit;
 
-    // compute bounding box of the trash so highlight matches size
     const box = new THREE.Box3().setFromObject(fruit);
     const size = new THREE.Vector3();
     box.getSize(size);
 
-    // fallback sizes if something is missing
     const sx = size.x > 0 ? size.x * 1.15 : 1.05;
     const sy = size.y > 0 ? size.y * 1.15 : 1.05;
     const sz = size.z > 0 ? size.z * 1.15 : 1.05;
@@ -461,12 +433,10 @@ function selectFruit(fruit) {
     const geo = new THREE.BoxGeometry(sx, sy, sz);
     fruitHighlightMesh = new THREE.Mesh(geo, fruitHighlightMaterial);
 
-    // place highlight at the trash world position (not parent-local)
     const worldPos = new THREE.Vector3();
     fruit.getWorldPosition(worldPos);
     fruitHighlightMesh.position.copy(worldPos);
 
-    // Make sure highlight doesn't cast/receive shadows and sits slightly above to avoid z-fighting
     fruitHighlightMesh.castShadow = false;
     fruitHighlightMesh.receiveShadow = false;
     fruitHighlightMesh.renderOrder = 999;
@@ -475,20 +445,6 @@ function selectFruit(fruit) {
 
     console.log("Fruit selected:", fruit);
 }
-// function highlightTrash(obj) {
-//     // if (highlightedTrash === obj) return; // already highlighted
-
-//     // outlinePass.selectedObjects = obj ? [obj] : [];
-//     // highlightedTrash = obj;
-
-//     if (selectedTrash && selectedTrash !== trash) {
-//         // restore previous highlight
-//         selectedTrash.material = selectedTrash.userData.normalMat;
-//     }
-
-//     trash.material = trash.userData.highlightMat;
-//     selectedTrash = trash;
-// }
 
 
 function addOutline(baseMesh) {
@@ -529,13 +485,11 @@ window.addEventListener("click", (event) => {
     for (const hit of hits) {
         const obj = hit.object;
 
-        // find root
         let root = obj;
         while (root.parent && root.parent.type !== "Scene") {
             root = root.parent;
         }
 
-        // WINDMILL CLICK
         if (allWindwills.includes(root)) {
             const endTime = performance.now() + 10000;
             windmillTimers.set(root, endTime);
@@ -544,13 +498,8 @@ window.addEventListener("click", (event) => {
             return;
         }
 
-        // TRASH CLICK
-        // if (obj.name === "trash") {
-        //     selectTrash(obj);
-        //     return;
-        // }
+      
 
-        // BUILDING CLICK
         if (obj.geometry && obj.geometry.type === "BoxGeometry") {
             lastBuildingClicked = root;
             selectBuilding(root);
@@ -558,15 +507,11 @@ window.addEventListener("click", (event) => {
         }
     }
 
-    // Clicked empty: remove both highlights
     if (highlightMesh) {
         scene.remove(highlightMesh);
         highlightMesh = null;
     }
-    // if (trashHighlightMesh) {
-    //     scene.remove(trashHighlightMesh);
-    //     trashHighlightMesh = null;
-    // }
+  
 });
 
 window.addEventListener("pointerdown", (event) => {
@@ -575,16 +520,13 @@ window.addEventListener("pointerdown", (event) => {
 
 
 function onClickTrash(event) {
-    // Update mouse vector
     mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
     mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
-    // Raycast against all scene children (keeps current behavior)
     raycaster.setFromCamera(mouse, camera);
     const intersects = raycaster.intersectObjects(scene.children, true);
 
     if (intersects.length === 0) {
-        // clicked empty space → clear trash highlight & selection
         if (trashHighlightMesh) {
             scene.remove(trashHighlightMesh);
             trashHighlightMesh = null;
@@ -595,22 +537,18 @@ function onClickTrash(event) {
 
     const obj = intersects[0].object;
 
-    // CASE A — clicked a trash item
     if (obj.userData && obj.userData.type === "trash") {
         selectTrash(obj);
         return;
     }
 
-    // CASE B — clicked a bin while trash selected
     if (obj.userData && obj.userData.type === "recycleBin" && selectedTrash) {
-        // remove the trash and clear highlight
         scene.remove(selectedTrash);
-        // dispose resources (optional but good)
         try {
             selectedTrash.geometry.dispose();
             if (selectedTrash.material.map) selectedTrash.material.map.dispose();
             selectedTrash.material.dispose();
-        } catch (err) { /* ignore disposal errors */ }
+        } catch (err) { }
 
         if (trashHighlightMesh) {
             scene.remove(trashHighlightMesh);
@@ -618,12 +556,11 @@ function onClickTrash(event) {
         }
 
         selectedTrash = null;
-        points += 1; // or whatever scoring rule you want
+        points += 1;
         updateUI();
         return;
     }
 
-    // anything else → clear trash highlight
     if (trashHighlightMesh) {
         scene.remove(trashHighlightMesh);
         trashHighlightMesh = null;
@@ -633,16 +570,13 @@ function onClickTrash(event) {
 
 
 function onClickFruit(event) {
-    // Update mouse vector
     mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
     mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
-    // Raycast against all scene children (keeps current behavior)
     raycaster.setFromCamera(mouse, camera);
     const intersects = raycaster.intersectObjects(scene.children, true);
 
     if (intersects.length === 0) {
-        // clicked empty space → clear trash highlight & selection
         if (fruitHighlightMesh) {
             scene.remove(fruitHighlightMesh);
             fruitHighlightMesh = null;
@@ -653,22 +587,18 @@ function onClickFruit(event) {
 
     const obj = intersects[0].object;
 
-    // CASE A — clicked a trash item
     if (obj.userData && obj.userData.type === "fruit") {
         selectFruit(obj);
         return;
     }
 
-    // CASE B — clicked a bin while trash selected
     if (obj.userData && obj.userData.type === "trashBin" && selectedFruit) {
-        // remove the trash and clear highlight
         scene.remove(selectedFruit);
-        // dispose resources (optional but good)
         try {
             selectedFruit.geometry.dispose();
             if (selectedFruit.material.map) selectedFruit.material.map.dispose();
             selectedFruit.material.dispose();
-        } catch (err) { /* ignore disposal errors */ }
+        } catch (err) { }
 
         if (fruitHighlightMesh) {
             scene.remove(fruitHighlightMesh);
@@ -676,12 +606,11 @@ function onClickFruit(event) {
         }
 
         selectedFruit = null;
-        points += 1; // or whatever scoring rule you want
+        points += 1;
         updateUI();
         return;
     }
 
-    // anything else → clear trash highlight
     if (fruitHighlightMesh) {
         scene.remove(fruitHighlightMesh);
         fruitHighlightMesh = null;
@@ -692,17 +621,14 @@ function onClickFruit(event) {
 
 
 function onClickTreeGrow(event) {
-    // convert mouse position to normalized -1..1
     mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
     mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
-    // cast ray
     raycaster.setFromCamera(mouse, camera);
 
     const intersects = raycaster.intersectObjects(allTrees, true);
     if (intersects.length === 0) return;
 
-    // if no watering cans left → do nothing
     if (wateringCans <= 0) {
         console.log("No watering cans left!");
         return;
@@ -710,10 +636,8 @@ function onClickTreeGrow(event) {
 
     const tree = intersects[0].object.parent;
 
-    // grow the tree
     growTree(tree);
 
-    // update game state
     wateringCans--;
     points += 2;
 
@@ -723,7 +647,7 @@ function onClickTreeGrow(event) {
 function growTree(tree) {
     const targetScale = tree.scale.x + 0.2;
     const startScale = tree.scale.x;
-    const duration = 300; // ms
+    const duration = 300;
     const startTime = performance.now();
 
     function animateGrowth() {
@@ -756,11 +680,10 @@ window.addEventListener("keydown", (e) => {
         return;
     }
 
-    // Remove any existing panel on the building
     const oldPanel = selectedBuilding.getObjectByName("SolarPanel");
     if (oldPanel) {
         console.log("Building already has a solar panel!");
-        return; // ❗ Stop — no point increase, no solar panel decrease
+        return;
     }
 
     if (!baseSolarPanel) {
@@ -773,24 +696,19 @@ window.addEventListener("keydown", (e) => {
         return;
     }
 
-    // Clone the actual solar panel from solarpanel.js
     const newPanel = baseSolarPanel.clone(true);
     newPanel.name = "SolarPanel";
 
-    // Compute roof height
     const box = new THREE.Box3().setFromObject(selectedBuilding);
     const size = new THREE.Vector3();
     box.getSize(size);
 
     const roofHeight = size.y / 2;
 
-    // Attach to the building
     selectedBuilding.add(newPanel);
 
-    // Local position
     newPanel.position.set(0, roofHeight + 0.2, 0);
 
-    // Optional tilt
     newPanel.rotation.x = -Math.PI / 6;
 
     console.log("Solar panel cloned onto building!");
@@ -814,14 +732,13 @@ function animate() {
         const now = performance.now();
 
         if (endTime && now < endTime) {
-            //  Spin while timer active
             blades.rotation.z += 0.08;
 
             const lastPointTime = windmillPointTimers.get(windmill) || now;
 
 
             if (now - lastPointTime >= 1000) {
-                wind += 1; // +1 point per second while spinning
+                wind += 1;
                 windmillPointTimers.set(windmill, now);
                 updateUI();
             }
@@ -833,7 +750,6 @@ function animate() {
             }
 
         } else {
-            // Stop spinning after 10 sec
             windmillTimers.delete(windmill);
             windmillPointTimers.delete(windmill);
         }
@@ -843,28 +759,15 @@ function animate() {
     });
 
 
-
-    // if (scene.userData.updateTrashCans) {
-    //     scene.userData.updateTrashCans();
-    // }
-
     CameraController.update();
     animateFlaps();
-    //composer.render();
+   
     renderer.render(scene, camera);
 }
 animate();
 
 
 
-// Resize
-window.addEventListener('resize', () => {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-});
-
-// Resize
 window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();

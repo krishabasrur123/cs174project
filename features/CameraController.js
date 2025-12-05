@@ -141,11 +141,7 @@ state.obstacles.push(object);
  window.addEventListener('keydown', onKeyDown);
  window.addEventListener('keyup', onKeyUp);
 
- setThirdPersonView();
- function destroy() {
-    window.removeEventListener('keydown', onKeyDown);
-    window.removeEventListener('keyup', onKeyUp);
- }
+
 
  return {
     update, 
@@ -153,7 +149,7 @@ state.obstacles.push(object);
     addObstacles,
     getPosition,
     toggleView,
-    destroy
+   
  };
 
 }
