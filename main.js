@@ -9,6 +9,7 @@ import { createCameraController } from './features/CameraController.js';
 import { createTrash } from './features/Trash.js';
 import { createtrashcans } from './features/trashcans.js';
 import { createFruit } from './features/Fruit.js';
+import { createcloud } from './features/cloud.js';
 
 const loader = new THREE.TextureLoader();
 const raycaster = new THREE.Raycaster();
@@ -37,7 +38,7 @@ let allBuildings = [];
 let selectedBuilding = null;
 let windmillTimers = new Map();
 let windmillPointTimers = new Map();
-let gameTime = 300;
+let gameTime = 60;
 let gameRunning = true;
 let targetPoints = 75;
 let selectedTrash = null;
@@ -63,7 +64,41 @@ const fruitObjects = [];
 const windmillObjects = [];
 const treeObjects = [];
 const binObjects = [];
+let allClouds= [];
 
+function spawnCloud() {
+ const cloud = createcloud(loader);
+ cloud.position.set(
+ (Math.random() * 200) - 100, 20 + Math.random() * 10, (Math.random() * 200) - 100);
+
+
+ scene.add(cloud);
+ allClouds.push(cloud);
+}
+
+function onClickCloud(event) {
+ mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+ mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+ raycaster.setFromCamera(mouse, camera);
+ const hits = raycaster.intersectObjects(allClouds, true);
+ if(hits.length === 0) return;
+ 
+ let root = hits[0].object;
+ while (root.parent && root.parent.type !== "Scene") {
+ root = root.parent;
+ }
+
+
+ scene.remove(root);
+
+
+ const idx = allClouds.indexOf(root);
+ if (idx !== -1) allClouds.splice(idx, 1);
+ points += 1;
+ updateUI();
+}
+
+window.addEventListener('mousedown', onClickCloud);
 const ui = document.createElement("div");
 ui.style.position = "absolute";
 ui.style.top = "10px";
@@ -109,10 +144,7 @@ const baseSolarPanel = createSolarPanel();
 
 
 const sunLight = new THREE.DirectionalLight(0xffffff, 1.0);
-
-let sunAngle = 0;          
-const sunRadius = 80;    
-
+sunLight.position.set(30, 50, 20);
 sunLight.castShadow = true;
 sunLight.shadow.mapSize.width = 2048;
 sunLight.shadow.mapSize.height = 2048;
@@ -125,7 +157,7 @@ sunLight.shadow.camera.bottom = -120;
 
 
 const ambient = new THREE.AmbientLight(0xffffff, 0.7);
-ambient.intensity = 1.3; 
+ambient.intensity = 2; 
 scene.add(ambient);
 scene.add(sunLight);
 
@@ -171,7 +203,7 @@ function startGameTimer() {
             clearInterval(timerInterval);
             endGame && endGame();
         }
-    }, 1000);
+    }, 3000);
 }
 startGameTimer();
 
@@ -783,23 +815,17 @@ window.addEventListener("keydown", (e) => {
     newPanel.rotation.x = -Math.PI / 6;
 
     console.log("Solar panel cloned onto building!");
+    
     solarPanels--;
     points += 4;
     updateUI();
 });
+for (let i = 0; i < 20; i++ ) {
+ spawnCloud();
+}
 
 function animate() {
     requestAnimationFrame(animate);
-    sunAngle += 0.0009; 
-
-sunLight.position.set(
-    Math.cos(sunAngle) * sunRadius,
-    Math.sin(sunAngle) * sunRadius,
-    40                             
-);
-
-sunLight.lookAt(0, 0, 0); // sun always points at the world
-
 
     // ONLY update orbit controls while dragging (no more conflict!)
     if (controls.isDragging) controls.update();
@@ -832,6 +858,21 @@ sunLight.lookAt(0, 0, 0); // sun always points at the world
 
     // animate trashcan flaps
     try { animateFlaps && animateFlaps(); } catch (err) {}
+
+    
+for (let i= allClouds.length -1; i >= 0; i--) {
+ const cloud = allClouds[i];
+ cloud.position.x += cloud.userData.speedX;
+ cloud.position.z += cloud.userData.speedY;
+
+
+ if (cloud.position.x > 150 || cloud.position.x < -150 || cloud.position.z > 150 || cloud.position.z < -150) {
+ scene.remove(cloud);
+ allClouds.splice(i, 1);
+ spawnCloud();
+
+
+ }}
 
     // custom camera controller (Q/E)
     CameraController.update();
