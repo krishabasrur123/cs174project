@@ -823,8 +823,7 @@ window.addEventListener("keydown", (e) => {
 for (let i = 0; i < 20; i++ ) {
  spawnCloud();
 }
-let bladeV = 0.2;
-let damping = -0.00037; 
+
 function animate() {
     requestAnimationFrame(animate);
 
@@ -838,11 +837,7 @@ function animate() {
         const now = performance.now();
 
         if (endTime && now < endTime) {
-            blades.rotation.z += bladeV;
-            bladeV+=damping;
-            if (bladeV<0){
-                bladeV=0;
-            }
+            blades.rotation.z += 0.08;
 
             const lastPointTime = windmillPointTimers.get(windmill) || now;
             if (now - lastPointTime >= 1000) {
