@@ -6,6 +6,7 @@ import { createSolarPanel } from './features/solarpanel.js';
 import { createCameraController } from './features/CameraController.js';
 import { createTrash } from './features/Trash.js';
 import { createtrashcans } from './features/trashcans.js';
+import { createFruit } from './features/Fruit.js';
 
 
 const loader = new THREE.TextureLoader();
@@ -39,6 +40,26 @@ let allBuildings = [];
 let selectedBuilding = null;
 let windmillTimers = new Map();
 let windmillPointTimers = new Map();
+let gameTime = 60;
+let gameRunning = true;
+let targetPoints = 50;
+let selectedTrash = null;
+let selectedFruit = null;
+
+
+const trashHighlightMaterial = new THREE.MeshBasicMaterial({
+    color: 0xffff00,
+    transparent: true,
+    opacity: 0.20
+});
+let trashHighlightMesh = null;
+
+const fruitHighlightMaterial = new THREE.MeshBasicMaterial({
+    color: 0xffff00,
+    transparent: true,
+    opacity: 0.20
+});
+let fruitHighlightMesh = null;
 
 const highlightMaterial = new THREE.MeshBasicMaterial({
     color: 0xffff00,
@@ -60,6 +81,18 @@ ui.style.fontFamily = "Arial";
 ui.style.zIndex = "1000";
 document.body.appendChild(ui);
 
+const timerUI = document.createElement("div");
+timerUI.style.position = "absolute";
+timerUI.style.top = "10px";
+timerUI.style.right = "10px";
+timerUI.style.padding = "10px 20px";
+timerUI.style.fontSize = "18px";
+timerUI.style.fontFamily = "Arial";
+timerUI.style.zIndex = "1000";
+timerUI.style.background = "rgba(255,255,255,0.8)";
+timerUI.style.borderRadius = "8px";
+document.body.appendChild(timerUI);
+
 function updateUI() {
     ui.innerHTML = `
         ⭐ Total Points: ${points}<br>
@@ -67,11 +100,14 @@ function updateUI() {
         🌱 Watering Cans: ${wateringCans}<br>
         ☀️ Solar Panels: ${solarPanels}<br>
     `;
+    timerUI.innerHTML = `
+        ⏱️ Timer: 00:${gameTime}<br>
+    `;
 }
 updateUI();
 
-let trashIsPicked=false;
-let trashColor="";
+
+
 
 
 // Controls
@@ -116,6 +152,21 @@ const grassTexture = loader.load("/textures/ground.jpg");
 grassTexture.wrapS = grassTexture.wrapT = THREE.RepeatWrapping;
 
 
+// const trashcanSystem = createtrashcans(scene, handleTrashBinClick);
+// scene.add(trashcanSystem.recycleBin);
+// scene.add(trashcanSystem.trashBin);
+
+const { recycleBin, trashBin, animateFlaps, handleClick } =
+createtrashcans(scene, (binType) => {
+    console.log("Bin clicked:", binType); // 'r' for recycle, 'c' for compost
+});
+
+scene.add(recycleBin);
+scene.add(trashBin);
+
+recycleBin.userData.type = "recycleBin";
+trashBin.userData.type = "trashBin";
+
 // Building textures
 const buildingTextures = [
     "/textures/building1.png",
@@ -134,6 +185,30 @@ let allTrees = [];
 // Create buildings 
 const gridSize = 10;
 const spacing = 10;
+
+function startGameTimer() {
+    // const timerEl = document.getElementById("timer");
+
+    const timerInterval = setInterval(() => {
+        if (!gameRunning) {
+            clearInterval(timerInterval);
+            return;
+        }
+
+        gameTime--;
+        updateUI();
+        // timerEl.textContent = "Time: " + gameTime;
+
+        if (gameTime <= 0) {
+            gameRunning = false;
+            clearInterval(timerInterval);
+            endGame();
+        }
+    }, 1000);
+}
+
+startGameTimer();
+
 
 
 function createTile(x, z, isRoad) {
@@ -264,46 +339,26 @@ for (let i = -gridSize; i <= gridSize; i++) {
             scene.add(tree);
             allTrees.push(tree);
             collidableObjects.push(tree);
-        }  else if (!hasBuilding && Math.random() < 0.5) {
+        } else if (!hasBuilding && Math.random() < 0.8) {
 
             const trash = createTrash();
+
             trash.position.set(x, 0.75, z);
 
             scene.add(trash);
+            trash.userData.type = "trash";
             //allTrees.push(tree);
             collidableObjects.push(trash);
-        }
-          else if (!hasBuilding && Math.random() < 0.4) {
+        } else if (!hasBuilding && Math.random() < 0.9) {
 
-          const trashSet = createtrashcans(scene, (binType) => {
-    console.log("Bin clicked:", binType);
-    if (trashIsPicked) {
-    // blue goes to recycle
-    if (trashColor === "#0000FF" && binType === "recycle") {
-        points += 10;
-        console.log("Correct! +10");
-    }
+            const fruit = createFruit();
 
-    // green goes to compost
-    if (trashColor === "#00FF00" && binType === "compost") {
-        points += 10;
-        console.log("Correct! +10");
-    }
+            fruit.position.set(x, 0.75, z);
 
-    trashIsPicked = false;
-    updateUI();
-}
-
-});
-
-// Add to scene
-scene.add(trashSet.recycleBin);
-scene.add(trashSet.trashBin);
-console.log("Trashcan +recyclebin added");
-
-// Track this trash-can pair
-trashCanSets.push(trashSet);
-
+            scene.add(fruit);
+            fruit.userData.type = "fruit";
+            //allTrees.push(tree);
+            collidableObjects.push(fruit);
         }
     }
 
@@ -347,6 +402,113 @@ function selectBuilding(building) {
     console.log("Building selected:", building);
 }
 
+function selectTrash(trash) {
+    // remove previous trash highlight
+    if (trashHighlightMesh) {
+        scene.remove(trashHighlightMesh);
+        trashHighlightMesh = null;
+    }
+
+    selectedTrash = trash;
+
+    // compute bounding box of the trash so highlight matches size
+    const box = new THREE.Box3().setFromObject(trash);
+    const size = new THREE.Vector3();
+    box.getSize(size);
+
+    // fallback sizes if something is missing
+    const sx = size.x > 0 ? size.x * 1.15 : 1.05;
+    const sy = size.y > 0 ? size.y * 1.15 : 1.05;
+    const sz = size.z > 0 ? size.z * 1.15 : 1.05;
+
+    const geo = new THREE.BoxGeometry(sx, sy, sz);
+    trashHighlightMesh = new THREE.Mesh(geo, trashHighlightMaterial);
+
+    // place highlight at the trash world position (not parent-local)
+    const worldPos = new THREE.Vector3();
+    trash.getWorldPosition(worldPos);
+    trashHighlightMesh.position.copy(worldPos);
+
+    // Make sure highlight doesn't cast/receive shadows and sits slightly above to avoid z-fighting
+    trashHighlightMesh.castShadow = false;
+    trashHighlightMesh.receiveShadow = false;
+    trashHighlightMesh.renderOrder = 999;
+
+    scene.add(trashHighlightMesh);
+
+    console.log("Trash selected:", trash);
+}
+
+function selectFruit(fruit) {
+    // remove previous trash highlight
+    if (fruitHighlightMesh) {
+        scene.remove(fruitHighlightMesh);
+        fruitHighlightMesh = null;
+    }
+
+    selectedFruit = fruit;
+
+    // compute bounding box of the trash so highlight matches size
+    const box = new THREE.Box3().setFromObject(fruit);
+    const size = new THREE.Vector3();
+    box.getSize(size);
+
+    // fallback sizes if something is missing
+    const sx = size.x > 0 ? size.x * 1.15 : 1.05;
+    const sy = size.y > 0 ? size.y * 1.15 : 1.05;
+    const sz = size.z > 0 ? size.z * 1.15 : 1.05;
+
+    const geo = new THREE.BoxGeometry(sx, sy, sz);
+    fruitHighlightMesh = new THREE.Mesh(geo, fruitHighlightMaterial);
+
+    // place highlight at the trash world position (not parent-local)
+    const worldPos = new THREE.Vector3();
+    fruit.getWorldPosition(worldPos);
+    fruitHighlightMesh.position.copy(worldPos);
+
+    // Make sure highlight doesn't cast/receive shadows and sits slightly above to avoid z-fighting
+    fruitHighlightMesh.castShadow = false;
+    fruitHighlightMesh.receiveShadow = false;
+    fruitHighlightMesh.renderOrder = 999;
+
+    scene.add(fruitHighlightMesh);
+
+    console.log("Fruit selected:", fruit);
+}
+// function highlightTrash(obj) {
+//     // if (highlightedTrash === obj) return; // already highlighted
+
+//     // outlinePass.selectedObjects = obj ? [obj] : [];
+//     // highlightedTrash = obj;
+
+//     if (selectedTrash && selectedTrash !== trash) {
+//         // restore previous highlight
+//         selectedTrash.material = selectedTrash.userData.normalMat;
+//     }
+
+//     trash.material = trash.userData.highlightMat;
+//     selectedTrash = trash;
+// }
+
+
+function addOutline(baseMesh) {
+    const outline = baseMesh.clone();
+    outline.material = new THREE.MeshBasicMaterial({
+        color: 0xffff00,
+        side: THREE.BackSide,
+    });
+    outline.scale.multiplyScalar(1.05);
+    baseMesh.add(outline);
+    baseMesh.userData.outline = outline;
+    outline.visible = false;
+}
+
+function setHighlight(obj, value) {
+    if (!obj.userData.outline) return;
+    obj.userData.outline.visible = value;
+}
+
+
 
 window.addEventListener('click', onClickTreeGrow);
 
@@ -367,69 +529,165 @@ window.addEventListener("click", (event) => {
     for (const hit of hits) {
         const obj = hit.object;
 
-        if (obj.userData && obj.userData.type === "trash") {
-
-    trashIsPicked=true;
-    obj.material.transparent = true;
-    console.log("trash is picked");
-obj.material.opacity = 0.25;
-    function getRandomTrashColor() {
-    const colors = ["#0000FF", "#00FF00"];  // blue, green
-    return colors[Math.floor(Math.random() * colors.length)];
-}
-
- trashColor = getRandomTrashColor();}
-
+        // find root
         let root = obj;
         while (root.parent && root.parent.type !== "Scene") {
             root = root.parent;
         }
 
+        // WINDMILL CLICK
         if (allWindwills.includes(root)) {
-            console.log("Windmill clicked!");
-
-            // 🔥 Activate rotation for 10 seconds
-            const endTime = performance.now() + 6000; // 5 sec
+            const endTime = performance.now() + 10000;
             windmillTimers.set(root, endTime);
             windmillPointTimers.set(root, performance.now());
-            // Give points for clicking a windmill
-
             updateUI();
-
             return;
         }
 
-        // if (root.userData && root.userData.blades) {
-        //     // It's a windmill!
-        //     root.userData.spin = !root.userData.spin;
-        //     console.log("Windmill spin toggled:", root.userData.spin);
-
-        //     // DO NOT highlight windmills like buildings
+        // TRASH CLICK
+        // if (obj.name === "trash") {
+        //     selectTrash(obj);
         //     return;
         // }
 
-        // Buildings are BoxGeometry → clickable
+        // BUILDING CLICK
         if (obj.geometry && obj.geometry.type === "BoxGeometry") {
-            let root = obj;
-            while (root.parent && root.parent.type !== "Scene") {
-                root = root.parent;
-            }
-
             lastBuildingClicked = root;
-            selectBuilding(root); // <--- NEW highlighting
+            selectBuilding(root);
             return;
         }
     }
 
-
-    // If you click empty ground → clear highlight
+    // Clicked empty: remove both highlights
     if (highlightMesh) {
         scene.remove(highlightMesh);
         highlightMesh = null;
     }
+    // if (trashHighlightMesh) {
+    //     scene.remove(trashHighlightMesh);
+    //     trashHighlightMesh = null;
+    // }
 });
 
-  
+window.addEventListener("pointerdown", (event) => {
+    handleClick(event, camera);
+});
+
+
+function onClickTrash(event) {
+    // Update mouse vector
+    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+    // Raycast against all scene children (keeps current behavior)
+    raycaster.setFromCamera(mouse, camera);
+    const intersects = raycaster.intersectObjects(scene.children, true);
+
+    if (intersects.length === 0) {
+        // clicked empty space → clear trash highlight & selection
+        if (trashHighlightMesh) {
+            scene.remove(trashHighlightMesh);
+            trashHighlightMesh = null;
+        }
+        selectedTrash = null;
+        return;
+    }
+
+    const obj = intersects[0].object;
+
+    // CASE A — clicked a trash item
+    if (obj.userData && obj.userData.type === "trash") {
+        selectTrash(obj);
+        return;
+    }
+
+    // CASE B — clicked a bin while trash selected
+    if (obj.userData && obj.userData.type === "recycleBin" && selectedTrash) {
+        // remove the trash and clear highlight
+        scene.remove(selectedTrash);
+        // dispose resources (optional but good)
+        try {
+            selectedTrash.geometry.dispose();
+            if (selectedTrash.material.map) selectedTrash.material.map.dispose();
+            selectedTrash.material.dispose();
+        } catch (err) { /* ignore disposal errors */ }
+
+        if (trashHighlightMesh) {
+            scene.remove(trashHighlightMesh);
+            trashHighlightMesh = null;
+        }
+
+        selectedTrash = null;
+        points += 1; // or whatever scoring rule you want
+        updateUI();
+        return;
+    }
+
+    // anything else → clear trash highlight
+    if (trashHighlightMesh) {
+        scene.remove(trashHighlightMesh);
+        trashHighlightMesh = null;
+    }
+    selectedTrash = null;
+}
+
+
+function onClickFruit(event) {
+    // Update mouse vector
+    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+    // Raycast against all scene children (keeps current behavior)
+    raycaster.setFromCamera(mouse, camera);
+    const intersects = raycaster.intersectObjects(scene.children, true);
+
+    if (intersects.length === 0) {
+        // clicked empty space → clear trash highlight & selection
+        if (fruitHighlightMesh) {
+            scene.remove(fruitHighlightMesh);
+            fruitHighlightMesh = null;
+        }
+        selectedFruit = null;
+        return;
+    }
+
+    const obj = intersects[0].object;
+
+    // CASE A — clicked a trash item
+    if (obj.userData && obj.userData.type === "fruit") {
+        selectFruit(obj);
+        return;
+    }
+
+    // CASE B — clicked a bin while trash selected
+    if (obj.userData && obj.userData.type === "trashBin" && selectedFruit) {
+        // remove the trash and clear highlight
+        scene.remove(selectedFruit);
+        // dispose resources (optional but good)
+        try {
+            selectedFruit.geometry.dispose();
+            if (selectedFruit.material.map) selectedFruit.material.map.dispose();
+            selectedFruit.material.dispose();
+        } catch (err) { /* ignore disposal errors */ }
+
+        if (fruitHighlightMesh) {
+            scene.remove(fruitHighlightMesh);
+            fruitHighlightMesh = null;
+        }
+
+        selectedFruit = null;
+        points += 1; // or whatever scoring rule you want
+        updateUI();
+        return;
+    }
+
+    // anything else → clear trash highlight
+    if (fruitHighlightMesh) {
+        scene.remove(fruitHighlightMesh);
+        fruitHighlightMesh = null;
+    }
+    selectedFruit = null;
+}
 
 
 
@@ -481,6 +739,8 @@ function growTree(tree) {
     animateGrowth();
 }
 
+window.addEventListener('mousedown', onClickTrash);
+window.addEventListener('mousedown', onClickFruit);
 
 window.addEventListener("keydown", (e) => {
     if (e.key.toLowerCase() !== "p") return;
@@ -582,29 +842,27 @@ function animate() {
 
     });
 
-    // allWindwills.forEach(w => {
-    //     w.rotation.z = windmillRotation
-    // });
 
-    // if (windmillRotation > stableRange) {
-    //     const ground = Math.PI / 2;
-    //     if (windmillRotation < ground) windmillRotation += fallSpeed;
-    // } else if (windmillRotation < -stableRange) {
-    //     const ground = -Math.PI / 2;
-    //     if (windmillRotation > ground) windmillRotation -= fallSpeed;
+
+    // if (scene.userData.updateTrashCans) {
+    //     scene.userData.updateTrashCans();
     // }
 
-    if (scene.userData.updateTrashCans) {
-        scene.userData.updateTrashCans();
-
-    }
-
     CameraController.update();
+    animateFlaps();
+    //composer.render();
     renderer.render(scene, camera);
 }
 animate();
 
 
+
+// Resize
+window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+});
 
 // Resize
 window.addEventListener('resize', () => {
