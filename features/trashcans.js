@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
 /*
------------------------------- HOW TO IMPORT  THIS MODULE IN MAIN>JS ------------------------------
+------------------------------ HOW TO IMPORT  THIS MODULE IN MAIN>JS FOR TEAM MEMBERS ------------------------------
 
 1. IMPORT THE FUNCTION
 In your main.js (or whatever file initializes the scene):
@@ -21,19 +21,18 @@ Inside  scene setup:
     scene.add(recycleBin);
     scene.add(trashBin);
 
-4. ADD CLICK LISTENER
+4. ADD CLICK LISTENER BECAUE WE WANT TO MAKE TRASHCAN LID MOVE
 
     window.addEventListener("pointerdown", (event) => {
         handleClick(event, camera);
     });
 
-5. CALL animateFlaps() IN YOUR ANIMATE LOOP
-Inside your animation loop:
+5. CALL animateFlaps() IN OUR ANIMATE LOOP
 
     function render() {
         requestAnimationFrame(render);
 
-        animateFlaps();     // <-- make lids move
+        animateFlaps();     
 
         renderer.render(scene, camera);
     }
@@ -43,7 +42,8 @@ Inside your animation loop:
 
 
 export function createtrashcans(scene, handleClick) {
-    //matrices
+    //transformation matrices for easy computatioon
+
     function translationMatrix(tx, ty, tz) {
         return new THREE.Matrix4().set(
             1, 0, 0, tx,
@@ -88,7 +88,7 @@ export function createtrashcans(scene, handleClick) {
         );
     }
 
-    //cube geometry
+    //cube geometry -> this is for the bins so we can apply texture easily
     const l = 0.5;
     const positions = new Float32Array([
         // Front
@@ -158,7 +158,7 @@ export function createtrashcans(scene, handleClick) {
         // left
         -1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0,
 
-        // top
+        // top , probably not needed idk
         0, 1, 0,
         0, 1, 0,
         0, 1, 0,
@@ -205,7 +205,7 @@ export function createtrashcans(scene, handleClick) {
 
 
 
-    class Texture_Bin { //bin texture
+    class Texture_Bin { //bin texture, vertex and gragment shader code inspired from assignment 4 of class
         vertexShader() {
             return `
         uniform sampler2D uTexture;
@@ -242,7 +242,7 @@ export function createtrashcans(scene, handleClick) {
 
     }
 
-    // Full geometry
+    // bin geometry
     const boxGeom = new THREE.BufferGeometry();
     boxGeom.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     boxGeom.setAttribute('normal', new THREE.BufferAttribute(normals, 3));
@@ -254,7 +254,7 @@ export function createtrashcans(scene, handleClick) {
 
     boxGeom.attributes.position.needsUpdate = true;
 
-
+//add respective vertices
     boxGeom.addGroup(0, 6, 0);
     boxGeom.addGroup(6, 6, 1);
     boxGeom.addGroup(12, 6, 2);
@@ -268,6 +268,7 @@ export function createtrashcans(scene, handleClick) {
     let animation_time = 0.0;
 
 
+    //texture and material code
     const textureLoader = new THREE.TextureLoader();
 
 
@@ -275,7 +276,7 @@ export function createtrashcans(scene, handleClick) {
     const compostTexture = textureLoader.load('features/compostlogo.png');
 
 
-    recycleTexture.generateMipmaps = true; // default for power-of-two
+    recycleTexture.generateMipmaps = true; 
     recycleTexture.minFilter = THREE.LinearMipmapLinearFilter;
     recycleTexture.magFilter = THREE.LinearFilter;
     recycleTexture.needsUpdate = true;
@@ -331,7 +332,7 @@ export function createtrashcans(scene, handleClick) {
 
 
 
-    //cube transorm to make the bins using scale
+    //cube transorm to make the bins using scale, and position them (may have to delete later)
 
     const scale = scalingMatrix(1.4, 2.5, 1.4);
 
@@ -344,17 +345,17 @@ export function createtrashcans(scene, handleClick) {
     recycleBin.matrix.copy(recycleMove).multiply(scale);
     trashBin.matrix.copy(trashMove).multiply(scale);
 
-    //flaps
+    //flaps code
     const flapMaterialG = new THREE.MeshPhongMaterial({
         shininess: 30,
         side: THREE.DoubleSide,
-        color: 0xFF00FF // dark green
+        color: 0xFF00FF 
     });
 
     const flapMaterialR = new THREE.MeshPhongMaterial({
         shininess: 30,
         side: THREE.DoubleSide,
-        color: 0xFE7D6A // dark blue
+        color: 0xFE7D6A 
     });
 
     const flapRecycle = new THREE.Mesh(boxGeom, flapMaterialR);
@@ -384,7 +385,7 @@ export function createtrashcans(scene, handleClick) {
     let trashFlapAngle = 0;
 
 
-
+// use of transformation matrixes knowledge inspired from assignment 2 to use "hinge mathematics" to apply hinge rotation for lid
     function setFlapMatrix(flapMesh, angleDeg, positionX, binHeight = 1) {
         const flapAngle = angleDeg * Math.PI / 180; // convert to radians
         const flapScale = new THREE.Matrix4().set(
@@ -406,15 +407,14 @@ export function createtrashcans(scene, handleClick) {
 
         .multiply(moveToTop)
             .multiply(hingeOffset)
-            // <-- scale first
-            .multiply(flapRotation) // <-- rotate after
+            .multiply(flapRotation) 
             .multiply(hingeInverse).multiply(flapScale);
 
         flapMesh.matrixAutoUpdate = false;
         flapMesh.matrix.copy(flapMatrix);
     }
 
-    //shadow work
+    //shadow works
     recycleBin.castShadow = true;
     recycleBin.receiveShadow = true;
 
@@ -425,7 +425,7 @@ export function createtrashcans(scene, handleClick) {
     const FLAP_ACCEL = Math.PI / 8;
     const MAX_FLAP_ANGLE = Math.PI / 6;
 
-    // Trash flap
+    // Trash flap event listener function
     let trashFlapVelocity = 0;
 
     function handleBinClick(event, camera) {
@@ -444,6 +444,9 @@ export function createtrashcans(scene, handleClick) {
     }
 
 
+// PHYSICS Function to update flaps 
+//we will animate the flaps as if we have a pedal underneath the trashcan and when the pedal is pushed
+//the flaps spring up and when we slowly close the lid with our hands, the bin slowly closes
 
     function updateFlaps() {
         const REST_ANGLE = 0;
@@ -454,7 +457,7 @@ export function createtrashcans(scene, handleClick) {
         recycleFlapVelocity += accelRecycle;
         recycleFlapVelocity *= DAMPING;
         recycleFlapAngle += recycleFlapVelocity;
-
+//adding ranges so flap doesn't rotate  far beyond what was aloted 
         if (recycleFlapAngle > MAX_FLAP_ANGLE) {
             recycleFlapAngle = MAX_FLAP_ANGLE;
             recycleFlapVelocity = 0;
@@ -466,7 +469,6 @@ export function createtrashcans(scene, handleClick) {
 
         setFlapMatrix(flapRecycle, recycleFlapAngle * 180 / Math.PI, -2);
 
-        // --- Trash flap ---
         let accelTrash = -SPRING * (trashFlapAngle - REST_ANGLE);
         trashFlapVelocity += accelTrash;
         trashFlapVelocity *= DAMPING;
@@ -484,7 +486,7 @@ export function createtrashcans(scene, handleClick) {
         setFlapMatrix(flapTrash, trashFlapAngle * 180 / Math.PI, 2);
     }
 
-
+// ADD THIS FUNCTION IN MAIN
     function animateFlaps() {
         updateFlaps();
 
