@@ -17,6 +17,8 @@ const towerTopY = tower.position.y + 10 / 2;
 const hubDepth = 0.3;
 const hubHalfDepth = hubDepth / 2;
 
+//add hub to the windmill 
+
 hub.position.set(0, towerTopY, 0.2 + hubHalfDepth);
 
 
@@ -24,6 +26,8 @@ const bladeGroup = new THREE.Group();
 bladeGroup.position.copy(hub.position);
 bladeGroup.position.z += hubHalfDepth;
 
+
+// use canvas and mod function to create "ridges"
 const size = 128;
 const canvas = document.createElement('canvas');
 canvas.width = canvas.height = size;
@@ -50,6 +54,7 @@ const bladeMat = new THREE.MeshStandardMaterial({
   roughness: 0.9
 });
 
+//blade rotation controls
 for (let i = 0; i < 4; i++) {
   const blade = new THREE.Mesh(bladeGeo, bladeMat);
   blade.rotation.z = -Math.PI / 2 + (Math.PI / 2) * i;
@@ -60,6 +65,7 @@ const windmillGroup = new THREE.Group();
 windmillGroup.add(tower);
 windmillGroup.add(hub);
 windmillGroup.add(bladeGroup);
+
 
 return { windmillGroup, bladeGroup};
 }
