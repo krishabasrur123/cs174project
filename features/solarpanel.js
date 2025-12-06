@@ -1,129 +1,19 @@
-// import * as THREE from 'three';
-// import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-// export function createSolarPanel(scene, camera, renderer) {
-
-//     const orbitControls = new OrbitControls(camera, renderer.domElement);
-//     orbitControls.enableDamping = true;
-//     orbitControls.dampingFactor = 0.05;
-//     orbitControls.target.set(6, 6, -2);
-
-//     // Sun setup
-//     const sunGeometry = new THREE.SphereGeometry(1, 32, 32);
-//     const sunMaterial = new THREE.MeshBasicMaterial({ color: 0xfdfd96 });
-//     const sun = new THREE.Mesh(sunGeometry, sunMaterial);
-//     sun.position.set(0, 20, 20);
-//     scene.add(sun);
-
-//     // Directional light representing sun
-//     const sunLight = new THREE.DirectionalLight(0xffffff, 1);
-//     sunLight.position.copy(sun.position);
-//     scene.add(sunLight);
-//     scene.add(new THREE.AmbientLight(0xffffff, 0.3));
-
-//     // Solar panel setup
-//     const panelContainer = new THREE.Group();
-//     scene.add(panelContainer);
-
-//     const panelWidth = 5;
-//     const panelHeight = 2.5;
-//     const panelThickness = 0.2;
-//     const panelGeometry = new THREE.BoxGeometry(panelWidth, panelHeight, panelThickness);
-
-//     function createPanelTexture() {
-//         const canvas = document.createElement('canvas');
-//         const size = 128;
-//         canvas.width = canvas.height = size;
-//         const context = canvas.getContext('2d');
-//         const squareSize = 16;
-
-//         for (let row = 0; row < size; row += squareSize) {
-//             for (let col = 0; col < size; col += squareSize) {
-//                 const isBlue = (col + row) % (2 * squareSize) === 0;
-//                 context.fillStyle = isBlue ? '#1013dc81' : '#30088eff';
-//                 context.fillRect(col, row, squareSize, squareSize);
-//             }
-//         }
-
-//         const texture = new THREE.CanvasTexture(canvas);
-//         texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-//         texture.repeat.set(2, 1);
-//         return texture;
-//     }
-
-//     const panelMaterial = new THREE.MeshStandardMaterial({
-//         map: createPanelTexture(),
-//         roughness: 0.2,
-//         metalness: 0.1
-//     });
-
-
-//     const solarPanel = new THREE.Mesh(panelGeometry, panelMaterial);
-//     solarPanel.name = "SolarPanel"; // <-- ADD THIS LINE
-
-//     solarPanel.rotation.x = -Math.PI / 6;
-//     panelContainer.add(solarPanel);
-
-//     panelContainer.position.set(2, 15, 20);
-
-//     const moveSpeed = 0.1;
-//     document.addEventListener('keydown', (event) => {
-//         switch (event.key) {
-//             case 'ArrowUp':
-//                 panelContainer.position.z -= moveSpeed;
-//                 break;
-//             case 'ArrowDown':
-//                 panelContainer.position.z += moveSpeed;
-//                 break;
-//             case 'ArrowLeft':
-//                 panelContainer.position.x -= moveSpeed;
-//                 break;
-//             case 'ArrowRight':
-//                 panelContainer.position.x += moveSpeed;
-//                 break;
-//         }
-//         orbitControls.target.copy(panelContainer.position);
-//     });
-
-//     // Sun animation parameters
-//     let sunRadius = 1;
-//     let expanding = true;
-//     const minRadius = 0.5;
-//     const maxRadius = 2;
-
-//     function updateSun() {
-//         // Update radius
-//         if (expanding) {
-//             sunRadius += 0.01;
-//             if (sunRadius >= maxRadius) expanding = false;
-//         } else {
-//             sunRadius -= 0.01;
-//             if (sunRadius <= minRadius) expanding = true;
-//         }
-
-//         // Update sun sphere
-//         sun.scale.set(sunRadius, sunRadius, sunRadius);
-
-//         // Update light intensity based on radius
-//         sunLight.intensity = 0.5 + (sunRadius - minRadius) / (maxRadius - minRadius) * 1.5; // 0.5 → 2
-//     }
-
-//     function runAnimation() {
-//         requestAnimationFrame(runAnimation);
-
-//         updateSun();
-//         orbitControls.update();
-
-//     }
-
-//     runAnimation();
-// }
 
 
 import * as THREE from 'three';
 
 export function createSolarPanel() {
 
-    // Solar panel geometry
+    function rotationXMatrix(theta) {
+            return new THREE.Matrix4().set(
+                1, 0, 0, 0,
+                0, Math.cos(theta), -Math.sin(theta), 0,
+                0, Math.sin(theta), Math.cos(theta), 0,
+                0, 0, 0, 1
+            );
+        }
+
+    // Solar panel geometry by creatin box and resizing it
     const panelWidth = 5;
     const panelHeight = 2.5;
     const panelThickness = 0.2;
@@ -158,7 +48,11 @@ export function createSolarPanel() {
 
     const solarPanel = new THREE.Mesh(panelGeometry, panelMaterial);
     solarPanel.name = "SolarPanel";
-    solarPanel.rotation.x = -Math.PI / 6;
+    const theta = -Math.PI / 6;
+solarPanel.matrix.identity();
+solarPanel.applyMatrix4(rotationXMatrix(theta));
+solarPanel.castShadow = true;     
+solarPanel.receiveShadow = true;  
 
     // DO NOT add to scene
     return solarPanel;
