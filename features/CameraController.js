@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-
+// This function creates a camera controller that moves the camera like a player
 export function createCameraController(camera, scene, obstacles = []) {
 const state = {
 obstacles: obstacles,
@@ -9,18 +9,20 @@ playerHeight : 1.6,
 playerRadius: 0.5,
 yaw: 0,
 isFirstPerson: false,
+
+    // Which movement keys are currently being held
 keys: {
-    forward: false,
-    backward: false,
-    left: false,
-    right: false,
-    turnLeft: false,
-    turnRight: false
+    forward: false, //W
+    backward: false, // S
+    left: false, // A
+    right: false, //D
+    turnLeft: false, // Q
+    turnRight: false // E
 
 }
 
 };
-
+// Which movement keys are currently being held
 const raycaster = new THREE.Raycaster();
 raycaster.far = state.playerRadius + 0.5;
 
@@ -64,7 +66,7 @@ function setFirstPersonView() {
 function setThirdPersonView () {
     camera.position.y = state.playerHeight + 2;
 }
-
+// Which movement keys are currently being held
 function checkCollision(newPosition) {
     const directions = [
         new THREE.Vector3(1, 0, 0),
