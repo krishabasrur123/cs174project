@@ -11,6 +11,7 @@ import { createtrashcans } from './features/trashcans.js';
 import { createFruit } from './features/Fruit.js';
 import { createcloud } from './features/cloud.js';
 
+//load stuff
 const loader = new THREE.TextureLoader();
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
@@ -56,8 +57,8 @@ let fruitHighlightMesh = null;
 const highlightMaterial = new THREE.MeshBasicMaterial({ color: 0xffff00, wireframe: true });
 let highlightMesh = null;
 
-// Interactive lists (for single raycast & performance)
-const interactiveObjects = []; // objects to raycast against (all clickable)
+// Interactive lists 
+const interactiveObjects = []; 
 const buildingObjects = [];
 const trashObjects = [];
 const fruitObjects = [];
@@ -66,6 +67,7 @@ const treeObjects = [];
 const binObjects = [];
 let allClouds= [];
 
+//add random clouds and cloud interaction code
 function spawnCloud() {
  const cloud = createcloud(loader);
  cloud.position.set(
@@ -97,6 +99,8 @@ function onClickCloud(event) {
  points += 1;
  updateUI();
 }
+
+//UI for the game
 
 window.addEventListener('mousedown', onClickCloud);
 const ui = document.createElement("div");
@@ -130,7 +134,7 @@ function updateUI() {
         🌱 Watering Cans: ${wateringCans}<br>
         ☀️ Solar Panels: ${solarPanels}<br>
     `;
-    timerUI.innerHTML = `⏱️ Timer: 00:${gameTime}<br>`;
+    timerUI.innerHTML = `⏱️ Timer: ${gameTime}<br>`;
 }
 updateUI();
 
@@ -142,7 +146,7 @@ const CameraController = createCameraController(camera, scene, collidableObjects
 
 const baseSolarPanel = createSolarPanel();
 
-
+//our sun
 const sunLight = new THREE.DirectionalLight(0xffffff, 1.0);
 sunLight.position.set(30, 50, 20);
 sunLight.castShadow = true;
@@ -161,6 +165,8 @@ ambient.intensity = 2;
 scene.add(ambient);
 scene.add(sunLight);
 
+
+//trashcan initialization
 const { recycleBin, trashBin, animateFlaps, handleClick } = createtrashcans(scene, (binType) => {
     console.log("Bin clicked:", binType);
 });
@@ -190,6 +196,8 @@ let allTrees = [];
 const gridSize = 10;
 const spacing = 10;
 
+
+//timer controls
 function startGameTimer() {
     const timerInterval = setInterval(() => {
         if (!gameRunning) {
@@ -203,10 +211,12 @@ function startGameTimer() {
             clearInterval(timerInterval);
             endGame && endGame();
         }
-    }, 1000);
+    }, 1000); 
 }
 startGameTimer();
 
+
+//create tiles based on what type we are given, sidewalk, road, or grass
 function createTile(x, z, type) {
     const tileGeom = new THREE.PlaneGeometry(10, 10);
 
@@ -248,6 +258,8 @@ function createTile(x, z, type) {
 
 let trashCanSets = []
 
+
+//add textured tiles to grid based on location
 for (let i = -gridSize; i <= gridSize; i++) {
     for (let j = -gridSize; j <= gridSize; j++) {
         const x = i * spacing;
@@ -382,6 +394,7 @@ for (let i = -gridSize; i <= gridSize; i++) {
     }
 }
 
+//solarpanel logic
 function objectsOverlap(objA, objB, padding = 0.5) {
     const boxA = new THREE.Box3().setFromObject(objA);
     const boxB = new THREE.Box3().setFromObject(objB);
@@ -471,7 +484,6 @@ function removeObject(obj) {
     remFromList(collidableObjects);
 }
 
-// selection / highlight functions (mostly unchanged)
 // selectBuilding: compute size via bounding box
 function selectBuilding(building) {
     if (highlightMesh) {
@@ -491,13 +503,15 @@ function selectBuilding(building) {
     const worldPos = new THREE.Vector3();
     building.getWorldPosition(worldPos);
     highlightMesh.position.copy(worldPos);
-    highlightMesh.position.y += 0.02; // small offset to avoid z-fighting
+    highlightMesh.position.y += 0.02; 
 
     scene.add(highlightMesh);
 
     console.log("Building selected:", building);
 }
 
+
+//select trash logic
 function selectTrash(trash) {
     if (trashHighlightMesh) {
         scene.remove(trashHighlightMesh);
@@ -836,6 +850,7 @@ function animate() {
         const endTime = windmillTimers.get(windmill);
         const now = performance.now();
 
+        
         if (endTime && now < endTime) {
             blades.rotation.z += 0.08;
 
